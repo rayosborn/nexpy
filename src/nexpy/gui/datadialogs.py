@@ -1481,6 +1481,20 @@ class RemoteDialog(BaseDialog):
         self.set_layout(self.parameters.grid(width=200), self.close_buttons())
         self.set_title('Open Remote File')
 
+    def download(self, root):
+        import timeit
+        tic = timeit.default_timer()
+        logging.getLogger("h5pyd").setLevel(logging.DEBUG)
+        for node in root.walk():
+            if isinstance(node, NXgroup) and node._entries == {}:
+                with node.nxfile as f:
+                    node._mode = 'rw'
+                    f.nxpath = node.nxfilepath
+                    f.readentries(node)
+        toc = timeit.default_timer()
+        logging.getLogger("h5pyd").setLevel(logging.INFO)
+        logging.info("Remote download completed in %s seconds" % (toc-tic))
+
     def accept(self):
         try:
             from nexusformat.nexus import nxloadremote
@@ -1495,6 +1509,10 @@ class RemoteDialog(BaseDialog):
                 "Opening remote NeXus file '%s' on '%s' as workspace '%s'"
                 % (root.nxfilename, root._file, name))
             super(RemoteDialog, self).accept()
+            import threading
+#            self.download_thread = threading.Thread(target=self.download,
+#                                                    args=[root])
+#            self.download_thread.start()            
         except NeXusError as error:
             report_error("Opening remote file", error)
             super(RemoteDialog, self).reject()

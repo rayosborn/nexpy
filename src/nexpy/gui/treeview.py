@@ -237,9 +237,12 @@ class NXSortModel(QtCore.QSortFilterProxyModel):
         super(NXSortModel, self).__init__(parent)
 
     def lessThan(self, left, right):
-        left_text = self.sourceModel().itemFromIndex(left).text()
-        right_text = self.sourceModel().itemFromIndex(right).text()
-        return natural_sort(left_text) < natural_sort(right_text)
+        try:
+            left_text = self.sourceModel().itemFromIndex(left).text()
+            right_text = self.sourceModel().itemFromIndex(right).text()
+            return natural_sort(left_text) < natural_sort(right_text)
+        except Exception as exception:
+            return True
 
     
 class NXTreeView(QtWidgets.QTreeView):
@@ -273,6 +276,7 @@ class NXTreeView(QtWidgets.QTreeView):
         self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.setExpandsOnDoubleClick(False)
         self.doubleClicked.connect(self.mainwindow.plot_data)
+#        self.expanded.connect(self.expand)
 
         # Popup Menu
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -425,6 +429,16 @@ class NXTreeView(QtWidgets.QTreeView):
         else:
             text = str(message)
         self.mainwindow.statusBar().showMessage(text.replace('\n','; '))
+
+    def expand(self, index):
+        item = self._model.itemFromIndex(
+                   self.proxymodel.mapToSource(index))
+        if item:
+            if isinstance(item.node, NXgroup):
+                for key in item.node.entries:
+                    value = item.node[key]
+                    if isinstance(value, NXgroup):
+                        value.entries
 
     @property
     def node(self):
