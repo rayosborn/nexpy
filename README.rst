@@ -20,7 +20,8 @@ conda-forge channel::
 
 You can install the package from the source code either by downloading one of 
 the `Github releases <https://github.com/nexpy/nexpy/releases>`_ or by cloning 
-the latest development version in the `NeXpy Git repository <https://github.com/nexpy/nexpy>`_::
+the latest development version in the 
+`NeXpy Git repository <https://github.com/nexpy/nexpy>`_::
 
     $ git clone https://github.com/nexpy/nexpy.git
 
@@ -60,7 +61,8 @@ Python Command-Line API
 The current version of NeXpy uses `h5py <http://h5py.org>`_ to read and write 
 NeXus files because of its ability to handle large data files. There is 
 therefore no dependency on the `NeXus C API 
-<http://download.nexusformat.org/doc/html/napi.html>`_. This also means that the current version cannot read and write HDF4 or XML NeXus files. These can be
+<http://download.nexusformat.org/doc/html/napi.html>`_. This also means that the 
+current version cannot read and write HDF4 or XML NeXus files. These can be
 converted to HDF5 file using the NeXus command-line utility 
 `nxconvert <http://download.nexusformat.org/doc/html/utilities.html>`_`.
 
@@ -80,10 +82,6 @@ scipy              https://scipy.org/
 .. note:: If you need to read HDF4 or XML files now, please clone the 
           old-master branch (https://github.com/nexpy/nexpy/tree/old-master).
 
-.. warning:: Version 0.5 is the last version to be compatible with Python 2.
-             There may be urgent bug fixes but from v0.6, Python 3 will be 
-             required.
-
 NeXpy GUI
 ---------
 The GUI is built using the PyQt. The latest version supports PyQt4, PySide, and
@@ -94,10 +92,6 @@ in the
 while PySide is included in the `Enthought Python Distribution
 <http://www.enthought.com>`_ or within Enthought's `Canopy Application
 <https://www.enthought.com/products/canopy/>`_.
-
-.. warning:: Version 0.12 is the last version to be compatible with Python 2.
-             There may be urgent bug fixes but from v0.13, Python 3 will be 
-             required.
 
 The GUI includes an `IPython shell <http://ipython.org/>`_ and a `Matplotlib
 plotting pane <http://matplotlib.sourceforge.net>`_. The IPython shell is
@@ -116,21 +110,10 @@ pillow             https://pillow.readthedocs.io/
 ansi2html          https://pypi.python.org/pypi/ansi2html/
 =================  =================================================
 
-.. warning:: On Mac OS there is a serious issue with PyQt5, which started in 
-             v5.11 and has still not been fixed in v5.13. It should have been
-             fixed in NeXpy v0.12.2, but if you experience any similar issues,
-             please report it. The alternative is to downgrade PyQt to <v5.10.
-
-.. warning:: Some people have reported that NeXpy crashes on launch on some
-             Linux systems. We believe that this may be due to both PyQt4 and
-             PyQt5 being installed, although that doesn't cause a problem on 
-             all systems. If NeXpy crashes on launch, please try setting the
-             environment variable QT_API to either 'pyqt', for the PyQt4 
-             library, 'pyqt5' for the PyQt5 library, or 'pyside', for the 
-             PySide library, depending on what you have installed, *e.g.*, in 
-             BASH, type ::
-
-                 export QT_API=pyqt
+.. warning:: In Matplotlib v3.3.3, released in November, a number of changes 
+             were made that cause an exception when modifying grid lines. This
+             will be fixed in NeXpy v0.13.2, but in the meantime, please 
+             downgrade to Matplotlib v3.3.2 if possible.
 
 .. seealso:: If you are having problems linking to the PySide library, you may
              need to run the PySide post-installation script after installing
