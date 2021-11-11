@@ -2532,6 +2532,7 @@ class MainWindow(QtWidgets.QMainWindow):
                           icon=self.app.icon_pixmap):
             self.console.kernel_client.stop_channels()
             self.console.kernel_manager.shutdown_kernel()
+            self.console.close()
             self.close_files()
             self.close_widgets()
             logging.info('NeXpy closed\n'+80*'-')
