@@ -690,11 +690,11 @@ class NXimporter:
 
     def __enter__(self):
         for path in reversed(self.paths):
-            sys.path.insert(0, path)
+            sys.path.insert(0, str(path))
 
     def __exit__(self, exc_type, exc_value, traceback):
         for path in self.paths:
-            sys.path.remove(path)
+            sys.path.remove(str(path))
 
 
 def import_plugin(name, paths):

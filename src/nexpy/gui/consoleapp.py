@@ -13,28 +13,27 @@ A minimal application using the Qt console-style Jupyter frontend.
 import logging
 import logging.handlers
 import os
-import pkg_resources
 import shutil
 import signal
 import sys
 import tempfile
-
-from .pyqt import QtCore, QtGui, QtWidgets, QtVersion
+from importlib import resources
+from pathlib import Path
 
 from IPython import __version__ as ipython_version
 from jupyter_client.consoleapp import JupyterConsoleApp, app_aliases, app_flags
 from jupyter_core.application import JupyterApp, base_aliases, base_flags
 from matplotlib import __version__ as mpl_version
+from nexusformat.nexus import NXroot, nxclasses, nxversion
 from qtconsole import __version__
 from qtconsole.jupyter_widget import JupyterWidget
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from traitlets import Any, CBool, Dict, Unicode
 from traitlets.config.application import boolean_flag, catch_config_error
 
-from nexusformat.nexus import NXroot, nxclasses, nxversion
-
 from .. import __version__ as nexpy_version
 from .mainwindow import MainWindow
+from .pyqt import QtCore, QtGui, QtVersion, QtWidgets
 from .treeview import NXtree
 from .utils import (NXConfigParser, NXGarbageCollector, NXLogger,
                     initialize_preferences, report_exception, timestamp_age)
@@ -136,30 +135,26 @@ class NXConsoleApp(JupyterApp, JupyterConsoleApp):
 
     def init_dir(self):
         """Initialize NeXpy home directory"""
-        home_dir = os.path.abspath(os.path.expanduser('~'))
-        nexpy_dir = os.path.join(home_dir, '.nexpy')
-        if not os.path.exists(nexpy_dir):
-            parent = os.path.dirname(nexpy_dir)
-            if not os.access(parent, os.W_OK):
+        nexpy_dir = Path.home().joinpath('.nexpy')
+        if not nexpy_dir.exists():
+            if not os.access(nexpy_dir.parent, os.W_OK):
                 nexpy_dir = tempfile.mkdtemp()
             else:
-                os.mkdir(nexpy_dir)
+                nexpy_dir.mkdir()
         for subdirectory in ['backups', 'functions', 'models', 'plugins',
                              'readers', 'scripts']:
-            directory = os.path.join(nexpy_dir, subdirectory)
-            if not os.path.exists(directory):
-                os.mkdir(directory)
+            nexpy_dir.joinpath(subdirectory).mkdir(exist_ok=True)
         global _nexpy_dir
         self.nexpy_dir = _nexpy_dir = nexpy_dir
-        self.backup_dir = os.path.join(self.nexpy_dir, 'backups')
-        self.plugin_dir = os.path.join(self.nexpy_dir, 'plugins')
-        self.reader_dir = os.path.join(self.nexpy_dir, 'readers')
-        self.script_dir = os.path.join(self.nexpy_dir, 'scripts')
-        self.function_dir = os.path.join(self.nexpy_dir, 'functions')
-        self.model_dir = os.path.join(self.nexpy_dir, 'models')
-        sys.path.append(self.function_dir)
-        self.scratch_file = os.path.join(self.nexpy_dir, 'w0.nxs')
-        if not os.path.exists(self.scratch_file):
+        self.backup_dir = self.nexpy_dir.joinpath('backups')
+        self.plugin_dir = self.nexpy_dir.joinpath('plugins')
+        self.reader_dir = self.nexpy_dir.joinpath('readers')
+        self.script_dir = self.nexpy_dir.joinpath('scripts')
+        self.function_dir = self.nexpy_dir.joinpath('functions')
+        self.model_dir = self.nexpy_dir.joinpath('models')
+        sys.path.append(str(self.function_dir))
+        self.scratch_file = self.nexpy_dir.joinpath('w0.nxs')
+        if not self.scratch_file.exists():
             NXroot().save(self.scratch_file)
 
     def init_settings(self):
@@ -174,14 +169,14 @@ class NXConsoleApp(JupyterApp, JupyterConsoleApp):
             except ValueError:
                 return 0
         backups = self.settings.options('backups')
-        for backup in backups:
-            if not (os.path.exists(backup) and
-                    os.path.realpath(backup).startswith(self.backup_dir)):
-                self.settings.remove_option('backups', backup)
+        for backup in [Path(b) for b in backups]:
+            if not (backup.exists() and
+                    backup.resolve() in self.backup_dir.parents):
+                self.settings.remove_option('backups', str(backup))
             elif backup_age(backup) > 5:
                 try:
-                    shutil.rmtree(os.path.dirname(os.path.realpath(backup)))
-                    self.settings.remove_option('backups', backup)
+                    shutil.rmtree(str(backup.parent))
+                    self.settings.remove_option('backups', str(backup))
                 except OSError:
                     pass
         self.settings.save()
@@ -242,12 +237,12 @@ class NXConsoleApp(JupyterApp, JupyterConsoleApp):
         try:
             if 'svg' in QtGui.QImageReader.supportedImageFormats():
                 self.app.icon = QtGui.QIcon(
-                    pkg_resources.resource_filename(
-                        'nexpy.gui', 'resources/icon/NeXpy.svg'))
+                    str(resources.path('nexpy.gui.resources.icon',
+                                       'NeXpy.svg')))
             else:
                 self.app.icon = QtGui.QIcon(
-                    pkg_resources.resource_filename(
-                        'nexpy.gui', 'resources/icon/NeXpy.png'))
+                    str(resources.path('nexpy.gui.resources.icon',
+                                       'NeXpy.png')))
             QtWidgets.QApplication.setWindowIcon(self.app.icon)
             self.icon_pixmap = QtGui.QPixmap(
                 self.app.icon.pixmap(QtCore.QSize(64, 64)))

@@ -15,17 +15,16 @@ of a Matplotlib plotting pane and a tree view for displaying NeXus data.
 # -----------------------------------------------------------------------------
 # Imports
 # -----------------------------------------------------------------------------
-import glob
 import logging
 import os
 import re
 import sys
 import webbrowser
 import xml.etree.ElementTree as ET
+from importlib import resources
 from operator import attrgetter
 from pathlib import Path
 
-import pkg_resources
 from nexusformat.nexus import (NeXusError, NXdata, NXentry, NXfield, NXFile,
                                NXgroup, NXlink, NXobject, NXprocess, NXroot,
                                nxcompleter, nxduplicate, nxgetconfig, nxload)
@@ -89,7 +88,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.config = config
         self.copied_node = None
 
-        self.default_directory = os.path.expanduser('~')
+        self.default_directory = str(Path.home())
         self.nexpy_dir = self.app.nexpy_dir
         self.backup_dir = self.app.backup_dir
         self.plugin_dir = self.app.plugin_dir
@@ -560,15 +559,17 @@ class MainWindow(QtWidgets.QMainWindow):
     def init_plugin_menus(self):
         """Add an menu item for every module in the plugin menus"""
         self.plugin_names = set()
-        private_path = self.plugin_dir
-        if os.path.isdir(private_path):
-            for name in os.listdir(private_path):
-                if (os.path.isdir(os.path.join(private_path, name)) and
+        private_path = Path(self.plugin_dir)
+        if private_path.is_dir():
+            for path in private_path.iterdir():
+                name = path.name
+                if (private_path.joinpath(path).is_dir() and
                         not (name.startswith('_') or name.startswith('.'))):
                     self.plugin_names.add(name)
-        public_path = pkg_resources.resource_filename('nexpy', 'plugins')
-        for name in os.listdir(public_path):
-            if (os.path.isdir(os.path.join(public_path, name)) and
+        public_path = resources.path('nexpy', 'plugins')
+        for path in public_path.iterdir():
+            name = path.name
+            if (public_path.joinpath(path).is_dir() and
                     not (name.startswith('_') or name.startswith('.'))):
                 self.plugin_names.add(name)
         plugin_paths = [private_path, public_path]
@@ -817,7 +818,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.recent_menu.hovered.connect(self.hover_recent_menu)
         self.recent_file_actions = {}
         for i, recent_file in enumerate(recent_files):
-            action = QtWidgets.QAction(os.path.basename(recent_file), self,
+            action = QtWidgets.QAction(Path(recent_file).name, self,
                                        triggered=self.open_recent_file)
             action.setToolTip(recent_file)
             self.add_menu_action(self.recent_menu, action, self)
@@ -827,17 +828,15 @@ class MainWindow(QtWidgets.QMainWindow):
         """Add an import menu item for every module in the readers directory"""
         self.import_names = set()
         self.import_menu = self.file_menu.addMenu("Import")
-        private_path = self.reader_dir
-        if os.path.isdir(private_path):
-            for filename in os.listdir(private_path):
-                name, ext = os.path.splitext(filename)
-                if name != '__init__' and ext.startswith('.py'):
-                    self.import_names.add(name)
-        public_path = pkg_resources.resource_filename('nexpy', 'readers')
-        for filename in os.listdir(public_path):
-            name, ext = os.path.splitext(filename)
-            if name != '__init__' and ext.startswith('.py'):
-                self.import_names.add(name)
+        private_path = Path(self.reader_dir)
+        if private_path.is_dir():
+            for path in private_path.iterdir():
+                if path.stem != '__init__' and path.suffix.startswith('.py'):
+                    self.import_names.add(path.stem)
+        public_path = resources.path('nexpy', 'readers')
+        for path in public_path.iterdir():
+            if path.stem != '__init__' and path.suffix.startswith('.py'):
+                self.import_names.add(path.stem)
         self.importer = {}
         import_paths = [private_path, public_path]
         for import_name in sorted(self.import_names):
@@ -864,7 +863,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if fname in [self.tree[root].nxfilename for root in self.tree]:
             raise NeXusError('File already open')
             return
-        elif not os.path.exists(fname):
+        elif not Path(fname).exists():
             raise NeXusError(f"'{fname}' does not exist")
         elif is_file_locked(fname, wait=wait):
             logging.info(
@@ -876,7 +875,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tree[name] = nxload(fname, 'rw')
         else:
             self.tree[name] = nxload(fname)
-            self.default_directory = os.path.dirname(fname)
+            self.default_directory = str(Path(fname).parent)
         self.treeview.update()
         self.treeview.select_node(self.tree[name])
         self.treeview.setFocus()
@@ -916,7 +915,7 @@ class MainWindow(QtWidgets.QMainWindow):
                                      "JPEG/PNG Files (*.jpg *.jpeg *.png)"))
             fname = getOpenFileName(self, 'Open Image File',
                                     self.default_directory, file_filter)
-            if fname is None or not os.path.exists(fname):
+            if fname is None or not Path(fname).exists():
                 return
             data = load_image(fname)
             if 'images' not in self.tree:
@@ -926,7 +925,7 @@ class MainWindow(QtWidgets.QMainWindow):
             node = self.tree['images'][name]
             self.treeview.select_node(node)
             self.treeview.setFocus()
-            self.default_directory = os.path.dirname(fname)
+            self.default_directory = str(Path(fname).parent)
             logging.info(
                 f"Image file '{fname}' opened as 'images{node.nxpath}'")
         except NeXusError as error:
@@ -937,7 +936,7 @@ class MainWindow(QtWidgets.QMainWindow):
             directory = self.default_directory
             directory = QtWidgets.QFileDialog.getExistingDirectory(
                 self, 'Choose Directory', directory)
-            if directory is None or not os.path.exists(directory):
+            if directory is None or not Path(directory).exists():
                 return
             tree_files = [self.tree[root].nxfilename for root in self.tree]
             nxfiles = sorted([f for f in os.listdir(directory)
@@ -975,10 +974,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 try:
                     action = [k for k, v in self.recent_file_actions.items()
                               if v[0] == i][0]
-                    action.setText(os.path.basename(recent_file))
+                    action.setText(Path(recent_file).name)
                     action.setToolTip(recent_file)
                 except IndexError:
-                    action = QtWidgets.QAction(os.path.basename(recent_file),
+                    action = QtWidgets.QAction(Path(recent_file).name,
                                                self,
                                                triggered=self.open_recent_file)
                     action.setToolTip(recent_file)
@@ -1012,7 +1011,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.tree[name] = self.user_ns[name] = root
                 self.treeview.select_node(self.tree[name])
                 self.treeview.update()
-                self.default_directory = os.path.dirname(fname)
+                self.default_directory = str(Path(fname).parent)
                 self.settings.remove_option('recent', old_fname)
                 self.settings.remove_option('session', old_fname)
                 self.update_files(fname)
@@ -1162,8 +1161,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.treeview.select_node(self.tree[name])
                 self.treeview.setFocus()
                 try:
-                    self.default_directory = os.path.dirname(
-                        self.import_dialog.import_file)
+                    self.default_directory = str(Path(
+                        self.import_dialog.import_file).parent)
                 except Exception:
                     pass
                 logging.info(f"Workspace '{name}' imported")
@@ -1221,7 +1220,7 @@ class MainWindow(QtWidgets.QMainWindow):
             lockdirectory = nxgetconfig('lockdirectory')
             if lockdirectory is None:
                 raise NeXusError("No lock file directory defined")
-            elif not os.path.exists(lockdirectory):
+            elif not Path(lockdirectory).exists():
                 raise NeXusError(f"'{lockdirectory}' does not exist")
             dialog = LockDialog(parent=self)
             dialog.show()
@@ -1234,8 +1233,8 @@ class MainWindow(QtWidgets.QMainWindow):
             if node is not None and not node.file_exists():
                 raise NeXusError(f"{node.nxfilename} does not exist")
             if isinstance(node, NXroot):
-                dir = os.path.join(self.nexpy_dir, 'backups', timestamp())
-                os.mkdir(dir)
+                dir = self.nexpy_dir.joinpath('backups', timestamp())
+                dir.mkdir(exist_ok=True)
                 node.backup(dir=dir)
                 self.settings.set('backups', node.nxbackup)
                 self.settings.save()
@@ -1717,16 +1716,14 @@ class MainWindow(QtWidgets.QMainWindow):
             report_error("Fitting Data", error)
 
     def input_base_classes(self):
-        base_class_path = pkg_resources.resource_filename(
-            'nexpy', 'definitions/base_classes')
-        nxdl_files = map(os.path.basename, glob.glob(
-            os.path.join(base_class_path, '*.nxdl.xml')))
+        base_class_path = resources.path('nexpy.definitions', 'base_classes')
+        nxdl_files = [str(f.resolve()) for f in base_class_path.iterdir()
+                      if f.name.endswith('.nxdl.xml')]
         pattern = re.compile(r'[\t\n ]+')
         self.nxclasses = {}
         for nxdl_file in nxdl_files:
             class_name = nxdl_file.split('.')[0]
-            xml_root = ET.parse(os.path.join(base_class_path,
-                                             nxdl_file)).getroot()
+            xml_root = ET.parse(nxdl_file).getroot()
             class_doc = ''
             class_groups = {}
             class_fields = {}
@@ -1967,7 +1964,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def open_script(self):
         try:
-            script_dir = os.path.join(self.nexpy_dir, 'scripts')
+            script_dir = str(self.nexpy_dir.joinpath('scripts'))
             file_filter = ';;'.join(("Python Files (*.py)",
                                      "Any Files (*.* *)"))
             file_name = getOpenFileName(self, 'Open Script', script_dir,
@@ -1980,7 +1977,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def open_startup_script(self):
         try:
-            file_name = os.path.join(self.nexpy_dir, 'config.py')
+            file_name = str(self.nexpy_dir.joinpath('config.py'))
             self.open_script_window(file_name)
             logging.info(f"NeXus script '{file_name}' opened")
         except NeXusError as error:
@@ -2005,8 +2002,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.add_script_action(os.path.join(directory, name), menu)
 
     def add_script_action(self, file_name, menu):
-        name = os.path.basename(file_name)
-        script_action = QtWidgets.QAction(name, self,
+        script_action = QtWidgets.QAction(Path(file_name).name, self,
                                           triggered=self.open_script_file)
         self.add_menu_action(menu, script_action, self)
         self.scripts[script_action] = (menu, file_name)
@@ -2036,14 +2032,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def open_example_file(self):
         default_directory = self.default_directory
-        self.default_directory = pkg_resources.resource_filename('nexpy',
-                                                                 'examples')
+        self.default_directory = str(resources.path('nexpy', 'examples'))
         self.open_file()
         self.default_directory = default_directory
 
     def open_example_script(self):
-        script_dir = pkg_resources.resource_filename(
-            'nexpy', os.path.join('examples', 'scripts'))
+        script_dir = str(resources.path('nexpy.examples', 'scripts'))
         file_filter = ';;'.join(("Python Files (*.py)",
                                  "Any Files (*.* *)"))
         file_name = getOpenFileName(self, 'Open Script', script_dir,

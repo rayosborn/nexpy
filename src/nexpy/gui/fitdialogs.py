@@ -5,16 +5,15 @@
 #
 # The full license is in the file COPYING, distributed with this software.
 # -----------------------------------------------------------------------------
-import importlib
 import inspect
-import os
 import re
 import sys
 import types
+from importlib import import_module, resources
 from itertools import cycle
+from pathlib import Path
 
 import numpy as np
-import pkg_resources
 from lmfit import Model, Parameters
 from lmfit import __version__ as lmfit_version
 from nexusformat.nexus import (NeXusError, NXdata, NXentry, NXfield, NXnote,
@@ -32,26 +31,23 @@ def get_functions():
     """Return a list of available functions and models."""
 
     filenames = set()
-    private_path = os.path.join(os.path.expanduser('~'), '.nexpy', 'functions')
-    if os.path.isdir(private_path):
-        sys.path.append(private_path)
-        for file_ in os.listdir(private_path):
-            name, ext = os.path.splitext(file_)
-            if name != '__init__' and ext.startswith('.py'):
-                filenames.add(name)
+    private_path = Path.home().joinpath('.nexpy', 'functions')
+    if private_path.is_dir():
+        sys.path.append(str(private_path))
+        for path in private_path.iterdir():
+            if path.stem != '__init__' and path.suffix.startswith('.py'):
+                filenames.add(path.stem)
 
-    functions_path = pkg_resources.resource_filename('nexpy.api.frills',
-                                                     'functions')
-    sys.path.append(functions_path)
-    for file_ in os.listdir(functions_path):
-        name, ext = os.path.splitext(file_)
-        if name != '__init__' and ext.startswith('.py'):
-            filenames.add(name)
+    functions_path = resources.path('nexpy.api.frills', 'functions')
+    sys.path.append(str(functions_path))
+    for path in functions_path.iterdir():
+        if path.stem != '__init__' and path.suffix.startswith('.py'):
+            filenames.add(path.stem)
 
     functions = {}
     for name in sorted(filenames):
         try:
-            module = importlib.import_module(name)
+            module = import_module(name)
             if hasattr(module, 'function_name'):
                 functions[module.function_name] = module
         except ImportError:
@@ -75,25 +71,22 @@ def get_models():
 
     filenames = set()
 
-    models_path = pkg_resources.resource_filename('nexpy.api.frills',
-                                                  'models')
-    sys.path.append(models_path)
-    for file_ in os.listdir(models_path):
-        name, ext = os.path.splitext(file_)
-        if name != '__init__' and ext.startswith('.py'):
-            filenames.add(name)
+    models_path = resources.path('nexpy.api.frills', 'models')
+    sys.path.append(str(models_path))
+    for path in models_path.iterdir():
+        if path.stem != '__init__' and path.suffix.startswith('.py'):
+            filenames.add(path.stem)
 
-    private_path = os.path.join(os.path.expanduser('~'), '.nexpy', 'models')
-    if os.path.isdir(private_path):
-        sys.path.append(private_path)
-        for file_ in os.listdir(private_path):
-            name, ext = os.path.splitext(file_)
-            if name != '__init__' and ext.startswith('.py'):
-                filenames.add(name)
+    private_path = Path.home().joinpath('.nexpy', 'models')
+    if private_path.iterdir():
+        sys.path.append(str(private_path))
+        for path in private_path.iterdir():
+            if path.stem != '__init__' and path.suffix.startswith('.py'):
+                filenames.add(path.stem)
 
     for name in sorted(filenames):
         try:
-            module = importlib.import_module(name)
+            module = import_module(name)
             models.update(dict((n.strip('Model'), m)
                                for n, m in inspect.getmembers(module,
                                                               inspect.isclass)
