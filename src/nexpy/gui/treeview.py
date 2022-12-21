@@ -7,8 +7,8 @@
 # -----------------------------------------------------------------------------
 
 import os
+from importlib import resources
 
-import pkg_resources
 from nexusformat.nexus import (NeXusError, NXdata, NXentry, NXfield, NXgroup,
                                NXlink, NXroot, nxload)
 
@@ -181,21 +181,21 @@ class NXTreeItem(QtGui.QStandardItem):
         self.path = self.root.nxname + node.nxpath
         if isinstance(node, NXlink):
             self._linked = QtGui.QIcon(
-                pkg_resources.resource_filename('nexpy.gui',
-                                                'resources/link-icon.png'))
+                str(resources.path('nexpy.gui.resources',
+                                   'link-icon.png')))
         elif isinstance(node, NXroot):
             self._locked = QtGui.QIcon(
-                pkg_resources.resource_filename('nexpy.gui',
-                                                'resources/lock-icon.png'))
+                str(resources.path('nexpy.gui.resources',
+                                   'lock-icon.png')))
             self._locked_modified = QtGui.QIcon(
-                pkg_resources.resource_filename('nexpy.gui',
-                                                'resources/lock-red-icon.png'))
+                str(resources.path('nexpy.gui.resources',
+                                   'lock-red-icon.png')))
             self._unlocked = QtGui.QIcon(
-                pkg_resources.resource_filename('nexpy.gui',
-                                                'resources/unlock-icon.png'))
+                str(resources.path('nexpy.gui.resources',
+                                   'unlock-icon.png')))
             self._unlocked_modified = QtGui.QIcon(
-                pkg_resources.resource_filename(
-                    'nexpy.gui', 'resources/unlock-red-icon.png'))
+                str(resources.path('nexpy.gui.resources',
+                                   'unlock-red-icon.png')))
         super().__init__(node.nxname)
 
     @property
