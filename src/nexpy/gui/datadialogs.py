@@ -10,11 +10,12 @@ import logging
 import numbers
 import os
 import shutil
+from importlib import resources
 from operator import attrgetter
+from pathlib import Path
 
 import matplotlib as mpl
 import numpy as np
-import pkg_resources
 from matplotlib.legend import Legend
 from matplotlib.rcsetup import validate_aspect, validate_float
 from nexusformat.nexus import (NeXusError, NXattr, NXdata, NXentry, NXfield,
@@ -4382,8 +4383,7 @@ class InstallPluginDialog(NXDialog):
         super().__init__(parent=parent)
 
         self.local_directory = self.mainwindow.plugin_dir
-        self.nexpy_directory = pkg_resources.resource_filename('nexpy',
-                                                               'plugins')
+        self.nexpy_directory = resources.path('nexpy', 'plugins')
         self.backup_dir = self.mainwindow.backup_dir
 
         self.setWindowTitle("Install Plugin")
@@ -4450,8 +4450,7 @@ class RemovePluginDialog(NXDialog):
         super().__init__(parent=parent)
 
         self.local_directory = self.mainwindow.plugin_dir
-        self.nexpy_directory = pkg_resources.resource_filename('nexpy',
-                                                               'plugins')
+        self.nexpy_directory = resources.path('nexpy', 'plugins')
         self.backup_dir = self.mainwindow.backup_dir
 
         self.setWindowTitle("Remove Plugin")
@@ -4467,11 +4466,11 @@ class RemovePluginDialog(NXDialog):
 
     def set_local_directory(self):
         self.set_default_directory(self.local_directory)
-        self.directoryname.setText(self.local_directory)
+        self.directoryname.setText(str(self.local_directory))
 
     def set_nexpy_directory(self):
         self.set_default_directory(self.nexpy_directory)
-        self.directoryname.setText(self.nexpy_directory)
+        self.directoryname.setText(str(self.nexpy_directory))
 
     def get_menu_name(self, plugin_name, plugin_path):
         try:
@@ -4523,8 +4522,7 @@ class RestorePluginDialog(NXDialog):
         super().__init__(parent=parent, default=True)
 
         self.local_directory = self.mainwindow.plugin_dir
-        self.nexpy_directory = pkg_resources.resource_filename('nexpy',
-                                                               'plugins')
+        self.nexpy_directory = resources.path('nexpy', 'plugins')
         self.backup_dir = self.mainwindow.backup_dir
 
         options = reversed(self.mainwindow.settings.options('plugins'))
