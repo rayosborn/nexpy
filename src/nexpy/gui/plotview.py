@@ -35,14 +35,13 @@ from matplotlib.backend_bases import (FigureCanvasBase, FigureManagerBase,
                                       NavigationToolbar2)
 from matplotlib.backends.backend_qt import FigureManagerQT as FigureManager
 from matplotlib.backends.backend_qt import NavigationToolbar2QT
-from matplotlib.backends.backend_qtagg import (FigureCanvasQTAgg as
-                                               FigureCanvas)
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.colors import LogNorm, Normalize, SymLogNorm
 from matplotlib.figure import Figure
 from matplotlib.image import imread
 from matplotlib.lines import Line2D
 from matplotlib.ticker import AutoLocator, LogLocator, ScalarFormatter
-from pkg_resources import parse_version
+from packaging.version import Version
 
 from .pyqt import QtCore, QtGui, QtWidgets
 
@@ -89,12 +88,12 @@ cmaps = ['viridis', 'inferno', 'magma', 'plasma',  # perceptually uniform
          'seismic', 'coolwarm', 'twilight', 'divgray',  # diverging
          'RdBu', 'RdYlBu', 'RdYlGn']
 
-if parse_version(mpl.__version__) >= parse_version('3.5.0'):
+if Version(mpl.__version__) >= Version('3.5.0'):
     mpl.colormaps.register(parula_map())
     mpl.colormaps.register(divgray_map())
     cmaps = [cm for cm in cmaps if cm in mpl.colormaps]
 else:
-    from matplotlib.cm import get_cmap, register_cmap, cmap_d
+    from matplotlib.cm import cmap_d, get_cmap, register_cmap
     register_cmap('parula', parula_map())
     register_cmap('divgray', divgray_map())
     cmaps = [cm for cm in cmaps if cm in cmap_d]
@@ -1095,7 +1094,7 @@ class NXPlotView(QtWidgets.QDialog):
             else:
                 opts['interpolation'] = self.interpolation
 
-        if parse_version(mpl.__version__) >= parse_version('3.5.0'):
+        if Version(mpl.__version__) >= Version('3.5.0'):
             cm = copy.copy(mpl.colormaps[self.cmap])
         else:
             cm = copy.copy(get_cmap(self.cmap))
@@ -1372,7 +1371,7 @@ class NXPlotView(QtWidgets.QDialog):
 
     def update_colorbar(self):
         if self.colorbar:
-            if parse_version(mpl.__version__) >= parse_version('3.1.0'):
+            if Version(mpl.__version__) >= Version('3.1.0'):
                 self.colorbar.update_normal(self.image)
             else:
                 self.colorbar.set_norm(self.norm)
@@ -1380,7 +1379,7 @@ class NXPlotView(QtWidgets.QDialog):
             if self.vtab.qualitative:
                 vmin, vmax = [int(i+0.5) for i in self.image.get_clim()]
                 self.colorbar.set_ticks(range(vmin, vmax))
-                if parse_version(mpl.__version__) >= parse_version('3.5.0'):
+                if Version(mpl.__version__) >= Version('3.5.0'):
                     self.colorbar.ax.set_ylim(self.vaxis.min_data-0.5,
                                               self.vaxis.max_data+0.5)
 
@@ -1515,7 +1514,7 @@ class NXPlotView(QtWidgets.QDialog):
             self.vaxis.max = self.vaxis.hi = vmax
             self.colorbar.locator = AutoLocator()
             self.colorbar.formatter = ScalarFormatter()
-            if parse_version(mpl.__version__) >= parse_version('3.1.0'):
+            if Version(mpl.__version__) >= Version('3.1.0'):
                 self.image.set_norm(SymLogNorm(linthresh, linscale=linscale,
                                                vmin=-vmax, vmax=vmax))
             else:
@@ -3477,7 +3476,7 @@ class NXPlotTab(QtWidgets.QWidget):
         if cmap is None:
             cmap = self._cached_cmap
         try:
-            if parse_version(mpl.__version__) >= parse_version('3.5.0'):
+            if Version(mpl.__version__) >= Version('3.5.0'):
                 cm = copy.copy(mpl.colormaps[cmap])
             else:
                 cm = copy.copy(get_cmap(cmap))
