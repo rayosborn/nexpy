@@ -135,10 +135,10 @@ class NXConsoleApp(JupyterApp, JupyterConsoleApp):
 
     def init_dir(self):
         """Initialize NeXpy home directory"""
-        nexpy_dir = Path.home().joinpath('.nexpy')
+        nexpy_dir = Path.home() / '.nexpy'
         if not nexpy_dir.exists():
             if not os.access(nexpy_dir.parent, os.W_OK):
-                nexpy_dir = tempfile.mkdtemp()
+                nexpy_dir = Path(tempfile.mkdtemp())
             else:
                 nexpy_dir.mkdir()
         for subdirectory in ['backups', 'functions', 'models', 'plugins',
@@ -146,20 +146,20 @@ class NXConsoleApp(JupyterApp, JupyterConsoleApp):
             nexpy_dir.joinpath(subdirectory).mkdir(exist_ok=True)
         global _nexpy_dir
         self.nexpy_dir = _nexpy_dir = nexpy_dir
-        self.backup_dir = self.nexpy_dir.joinpath('backups')
-        self.plugin_dir = self.nexpy_dir.joinpath('plugins')
-        self.reader_dir = self.nexpy_dir.joinpath('readers')
-        self.script_dir = self.nexpy_dir.joinpath('scripts')
-        self.function_dir = self.nexpy_dir.joinpath('functions')
-        self.model_dir = self.nexpy_dir.joinpath('models')
+        self.backup_dir = self.nexpy_dir / 'backups'
+        self.plugin_dir = self.nexpy_dir / 'plugins'
+        self.reader_dir = self.nexpy_dir / 'readers'
+        self.script_dir = self.nexpy_dir / 'scripts'
+        self.function_dir = self.nexpy_dir / 'functions'
+        self.model_dir = self.nexpy_dir / 'models'
         sys.path.append(str(self.function_dir))
-        self.scratch_file = self.nexpy_dir.joinpath('w0.nxs')
+        self.scratch_file = self.nexpy_dir / 'w0.nxs'
         if not self.scratch_file.exists():
             NXroot().save(self.scratch_file)
 
     def init_settings(self):
         """Initialize access to the NeXpy settings file."""
-        self.settings_file = os.path.join(self.nexpy_dir, 'settings.ini')
+        self.settings_file = self.nexpy_dir / 'settings.ini'
         self.settings = NXConfigParser(self.settings_file)
         initialize_preferences(self.settings)
 
@@ -183,7 +183,7 @@ class NXConsoleApp(JupyterApp, JupyterConsoleApp):
 
     def init_log(self):
         """Initialize the NeXpy logger."""
-        log_file = os.path.join(self.nexpy_dir, 'nexpy.log')
+        log_file = self.nexpy_dir / 'nexpy.log'
         handler = logging.handlers.RotatingFileHandler(log_file,
                                                        maxBytes=50000,
                                                        backupCount=5)
@@ -282,7 +282,7 @@ class NXConsoleApp(JupyterApp, JupyterConsoleApp):
                           "from matplotlib import pylab, mlab, pyplot\n",
                           "plt = pyplot\n",
                           "os.chdir(os.path.expanduser('~'))\n"]
-        config_file = os.path.join(self.nexpy_dir, 'config.py')
+        config_file = self.nexpy_dir / 'config.py'
         if not os.path.exists(config_file):
             with open(config_file, 'w') as f:
                 f.writelines(default_script)

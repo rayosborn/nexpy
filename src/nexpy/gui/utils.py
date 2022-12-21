@@ -18,6 +18,7 @@ import sys
 import traceback as tb
 from configparser import ConfigParser
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 from IPython.core.ultratb import ColorTB
@@ -404,7 +405,7 @@ def format_mtime(mtime):
 
 def modification_time(filename):
     try:
-        _mtime = os.path.getmtime(filename)
+        _mtime = get_mtime(Path(filename))
         return str(datetime.fromtimestamp(_mtime))
     except FileNotFoundError:
         return ''

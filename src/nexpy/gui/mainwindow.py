@@ -88,7 +88,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.config = config
         self.copied_node = None
 
-        self.default_directory = str(Path.home())
+        self.default_directory = Path.home()
         self.nexpy_dir = self.app.nexpy_dir
         self.backup_dir = self.app.backup_dir
         self.plugin_dir = self.app.plugin_dir
@@ -559,7 +559,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def init_plugin_menus(self):
         """Add an menu item for every module in the plugin menus"""
         self.plugin_names = set()
-        private_path = Path(self.plugin_dir)
+        private_path = self.plugin_dir
         if private_path.is_dir():
             for path in private_path.iterdir():
                 name = path.name
@@ -862,7 +862,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def load_file(self, fname, wait=5, recent=True):
         if fname in [self.tree[root].nxfilename for root in self.tree]:
             raise NeXusError('File already open')
-            return
         elif not Path(fname).exists():
             raise NeXusError(f"'{fname}' does not exist")
         elif is_file_locked(fname, wait=wait):
@@ -933,7 +932,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def open_directory(self):
         try:
-            directory = self.default_directory
+            directory = str(self.default_directory)
             directory = QtWidgets.QFileDialog.getExistingDirectory(
                 self, 'Choose Directory', directory)
             if directory is None or not Path(directory).exists():
@@ -1964,11 +1963,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def open_script(self):
         try:
-            script_dir = str(self.nexpy_dir.joinpath('scripts'))
             file_filter = ';;'.join(("Python Files (*.py)",
                                      "Any Files (*.* *)"))
-            file_name = getOpenFileName(self, 'Open Script', script_dir,
-                                        file_filter)
+            file_name = getOpenFileName(self, 'Open Script',
+                                        str(self.script_dir), file_filter)
             if file_name:
                 self.open_script_window(file_name)
                 logging.info(f"NeXus script '{file_name}' opened")
@@ -1992,20 +1990,20 @@ class MainWindow(QtWidgets.QMainWindow):
             report_error("Opening Script", error)
 
     def add_script_directory(self, directory, menu):
-        names = sorted(os.listdir(directory))
-        for name in names:
-            if os.path.isdir(os.path.join(directory, name)):
-                d = os.path.join(directory, name)
-                m = menu.addMenu(name)
+        paths = sorted(list(directory.iterdir()))
+        for path in paths:
+            if directory.joinpath(path).is_dir():
+                d = directory.joinpath(path)
+                m = menu.addMenu(str(path))
                 self.add_script_directory(d, m)
-            elif name.endswith('.py'):
-                self.add_script_action(os.path.join(directory, name), menu)
+            elif path.suffix == '.py':
+                self.add_script_action(directory.joinpath(path), menu)
 
     def add_script_action(self, file_name, menu):
-        script_action = QtWidgets.QAction(Path(file_name).name, self,
+        script_action = QtWidgets.QAction(file_name.name, self,
                                           triggered=self.open_script_file)
         self.add_menu_action(menu, script_action, self)
-        self.scripts[script_action] = (menu, file_name)
+        self.scripts[script_action] = (menu, str(file_name))
 
     def remove_script_action(self, file_name):
         for action, (menu, name) in self.scripts.items():

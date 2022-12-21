@@ -274,7 +274,7 @@ class NXWidget(QtWidgets.QWidget):
         self.directoryname.setMinimumWidth(300)
         default_directory = self.get_default_directory(suggestion=suggestion)
         if default and default_directory:
-            self.directoryname.setText(default_directory)
+            self.directoryname.setText(str(default_directory))
         directorybox = QtWidgets.QHBoxLayout()
         directorybox.addWidget(self.directorybutton)
         directorybox.addWidget(self.directoryname)
@@ -284,10 +284,10 @@ class NXWidget(QtWidgets.QWidget):
         """
         Opens a file dialog and sets the file text box to the chosen path.
         """
-        dirname = self.get_default_directory(self.filename.text())
-        filename = getOpenFileName(self, 'Open File', dirname)
-        if os.path.exists(filename):
-            dirname = os.path.dirname(filename)
+        dirname = self.get_default_directory(Path(self.filename.text()))
+        filename = Path(getOpenFileName(self, 'Open File', str(dirname)))
+        if filename.exists():
+            dirname = filename.parent
             self.filename.setText(str(filename))
             self.set_default_directory(dirname)
 
@@ -301,30 +301,30 @@ class NXWidget(QtWidgets.QWidget):
         """Opens a file dialog and sets the directory text box to the path."""
         dirname = self.get_default_directory()
         dirname = QtWidgets.QFileDialog.getExistingDirectory(
-            self, 'Choose Directory', dirname)
-        if os.path.exists(dirname):  # avoids problems if <Cancel> was selected
+            self, 'Choose Directory', str(dirname))
+        if dirname.exists():  # avoids problems if <Cancel> was selected
             self.directoryname.setText(str(dirname))
             self.set_default_directory(dirname)
 
     def get_directory(self):
         """Return the selected directory."""
-        return self.directoryname.text()
+        return Path(self.directoryname.text())
 
     def get_default_directory(self, suggestion=None):
         """Return the most recent default directory for open/save dialogs."""
-        if suggestion is None or not os.path.exists(suggestion):
-            suggestion = self.default_directory
-        if os.path.exists(suggestion):
-            if not os.path.isdir(suggestion):
-                suggestion = os.path.dirname(suggestion)
-        suggestion = os.path.abspath(suggestion)
-        return suggestion
+        if suggestion is None or not Path(suggestion).exists():
+            return self.default_directory
+        suggestion = Path(suggestion)
+        if not suggestion.is_dir():
+            suggestion = suggestion.parent
+        return suggestion.resolve()
 
     def set_default_directory(self, suggestion):
         """Defines the default directory to use for open/save dialogs."""
-        if os.path.exists(suggestion):
-            if not os.path.isdir(suggestion):
-                suggestion = os.path.dirname(suggestion)
+        suggestion = Path(suggestion)
+        if suggestion.exists():
+            if not suggestion.is_dir():
+                suggestion = suggestion.parent
             self.default_directory = suggestion
             self.mainwindow.default_directory = self.default_directory
 
@@ -336,15 +336,12 @@ class NXWidget(QtWidgets.QWidget):
         numeric order when a file name consists of text and index so that,
         e.g., 'data2.tif' comes before 'data10.tif'.
         """
-        if directory:
-            os.chdir(directory)
-        else:
-            os.chdir(self.get_directory())
+        if directory is None:
+            directory = self.get_directory()
         if not extension.startswith('.'):
-            extension = '.'+extension
-        from glob import glob
-        filenames = glob(prefix+'*'+extension)
-        return sorted(filenames, key=natural_sort)
+            extension = '.' + extension
+        filenames = directory.glob(prefix+'*'+extension)
+        return sorted([str(f) for f in filenames], key=natural_sort)
 
     def select_box(self, choices, default=None, slot=None):
         box = NXComboBox()
@@ -1254,9 +1251,9 @@ class NewDialog(NXDialog):
         else:
             self.tree[root] = NXroot()
             self.treeview.select_node(self.tree[root])
-        dir = os.path.join(self.mainwindow.backup_dir, timestamp())
-        os.mkdir(dir)
-        fname = os.path.join(dir, root+'_backup.nxs')
+        dir = self.mainwindow.backup_dir / timestamp()
+        dir.mkdir()
+        fname = str(dir / f"{root}_backup.nxs")
         self.tree[root].save(fname, 'w')
         self.treeview.update()
         logging.info(f"New workspace '{root}' created")
@@ -1273,7 +1270,7 @@ class DirectoryDialog(NXDialog):
 
         super().__init__(parent=parent)
 
-        self.directory = directory
+        self.directory = Path(directory)
         self.prefix_box = NXLineEdit()
         self.prefix_box.textChanged.connect(self.select_prefix)
         prefix_layout = self.make_layout(NXLabel('Prefix'), self.prefix_box)
@@ -1302,7 +1299,7 @@ class DirectoryDialog(NXDialog):
 
     def accept(self):
         for i, f in enumerate(self.files):
-            fname = os.path.join(self.directory, f)
+            fname = self.directory / f
             if i == 0:
                 self.mainwindow.load_file(fname, wait=1)
             else:
@@ -1795,7 +1792,7 @@ class ExportDialog(NXDialog):
                                     self.data.nxname+'.nxs',
                                     self.mainwindow.file_filter)
             if fname:
-                self.set_default_directory(os.path.dirname(fname))
+                self.set_default_directory(Path(fname).parent)
             else:
                 super().reject()
                 return
@@ -1811,7 +1808,7 @@ class ExportDialog(NXDialog):
             fname = getSaveFileName(self, "Choose a Filename",
                                     self.data.nxname+'.txt')
             if fname:
-                self.set_default_directory(os.path.dirname(fname))
+                self.set_default_directory(Path(fname).parent)
             else:
                 super().reject()
                 return
@@ -1825,8 +1822,8 @@ class ExportDialog(NXDialog):
                                                for f in self.export_fields])
             output = np.array(self.export_fields).T.astype(str)
             output[output == str(np.nan)] = ''
-            np.savetxt(fname, output, header=header, delimiter=self.delimiter,
-                       comments='', fmt='%s')
+            np.savetxt(str(fname), output, header=header,
+                       delimiter=self.delimiter, comments='', fmt='%s')
 
         logging.info(f"Data saved as '{fname}'")
         super().accept()
@@ -4415,19 +4412,19 @@ class InstallPluginDialog(NXDialog):
             plugin_path = self.local_directory
         else:
             plugin_path = self.nexpy_directory
-        installed_path = os.path.join(plugin_path, plugin_name)
-        if os.path.exists(installed_path):
+        installed_path = plugin_path / plugin_name
+        if installed_path.exists():
             if self.confirm_action("Overwrite plugin?",
                                    f"Plugin '{plugin_name}' already exists"):
-                backup = os.path.join(self.backup_dir, timestamp())
-                os.mkdir(backup)
-                shutil.move(installed_path, backup)
+                backup = self.backup_dir / timestamp()
+                backup.mkdir()
+                installed_path.replace(backup)
                 self.mainwindow.settings.set('plugins',
-                                             os.path.join(backup, plugin_name))
+                                             str(backup.joinpath(plugin_name)))
                 self.mainwindow.settings.save()
             else:
                 return
-        shutil.copytree(plugin_directory, installed_path)
+        shutil.copytree(str(plugin_directory), str(installed_path))
         for action in [action for action
                        in self.mainwindow.menuBar().actions()
                        if action.text() == plugin_menu_name]:
@@ -4495,7 +4492,7 @@ class RemovePluginDialog(NXDialog):
                                    "This cannot be reversed"):
                 backup = os.path.join(self.backup_dir, timestamp())
                 os.mkdir(backup)
-                shutil.move(plugin_directory, backup)
+                shutil.move(str(plugin_directory), str(backup))
                 self.mainwindow.settings.set('plugins',
                                              os.path.join(backup, plugin_name))
                 self.mainwindow.settings.save()
@@ -4598,7 +4595,7 @@ class RestorePluginDialog(NXDialog):
                 self.mainwindow.settings.save()
             else:
                 return
-        shutil.copytree(plugin_directory, restored_path)
+        shutil.copytree(str(plugin_directory), str(restored_path))
         self.remove_backup(plugin_directory)
 
         for action in [action for action
