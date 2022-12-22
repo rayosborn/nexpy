@@ -165,9 +165,10 @@ class NXConsoleApp(JupyterApp, JupyterConsoleApp):
 
         def backup_age(backup):
             try:
-                return timestamp_age(os.path.basename(os.path.dirname(backup)))
+                return timestamp_age(backup.parent.name)
             except ValueError:
                 return 0
+
         backups = self.settings.options('backups')
         for backup in [Path(b) for b in backups]:
             if not (backup.exists() and
@@ -283,7 +284,7 @@ class NXConsoleApp(JupyterApp, JupyterConsoleApp):
                           "plt = pyplot\n",
                           "os.chdir(os.path.expanduser('~'))\n"]
         config_file = self.nexpy_dir / 'config.py'
-        if not os.path.exists(config_file):
+        if not config_file.exists():
             with open(config_file, 'w') as f:
                 f.writelines(default_script)
         with open(config_file) as f:
