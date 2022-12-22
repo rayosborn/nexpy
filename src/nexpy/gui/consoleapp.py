@@ -171,8 +171,7 @@ class NXConsoleApp(JupyterApp, JupyterConsoleApp):
 
         backups = self.settings.options('backups')
         for backup in [Path(b) for b in backups]:
-            if not (backup.exists() and
-                    backup.resolve() in self.backup_dir.parents):
+            if not backup.exists() or backup.parent.parent != self.backup_dir:
                 self.settings.remove_option('backups', str(backup))
             elif backup_age(backup) > 5:
                 try:
