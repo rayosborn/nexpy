@@ -67,7 +67,7 @@ from nexusformat.nexus import NeXusError, NXdata, NXfield
 
 from .. import __version__
 from .datadialogs import (CustomizeDialog, ExportDialog, LimitDialog,
-                          ProjectionDialog, ScanDialog)
+                          ProjectionDialog, RotationDialog, ScanDialog)
 from .utils import (boundaries, centers, divgray_map, find_nearest,
                     fix_projection, get_color, iterable, keep_data, parula_map,
                     report_error, report_exception)
@@ -143,7 +143,8 @@ def new_figure_manager(label=None, *args, **kwargs):
     """
     if label is None:
         label = ''
-    if label == 'Projection' or label == 'Scan' or label == 'Fit':
+    if (label == 'Projection' or label == 'Rotation' or label == 'Scan'
+            or label == 'Fit'):
         nums = [plotviews[p].number for p in plotviews
                 if plotviews[p].number > 100]
         if nums:
@@ -262,7 +263,7 @@ class NXPlotView(QtWidgets.QDialog):
         used as the key to select an instance in the 'plotviews' dictionary.
     number : int
         The number used by Matplotlib to identify the plot. Numbers
-        greater than 100 are reserved for the Projection and Fit plots.
+        greater than 100 are reserved for the Panel plots.
     data : NXdata
         Original NXdata group to be plotted.
     plotdata : NXdata
@@ -3715,8 +3716,9 @@ class NXProjectionTab(QtWidgets.QWidget):
         self.plot_button = NXPushButton("Plot", self.plot_projection, self)
         self.sumbox = NXCheckBox("Sum", self.plotview.replot_data)
         self.panel_button = NXPushButton("Open Panel", self.open_panel, self)
-        self.panel_combo = NXComboBox(slot=self.open_panel, items=[
-                                      'Projection', 'Limits', 'Scan'])
+        self.panel_combo = NXComboBox(slot=self.open_panel,
+                                      items=['Projection', 'Rotation',
+                                             'Limits', 'Scan'])
 
         self.layout = QtWidgets.QHBoxLayout()
         self.layout.addStretch()
@@ -3839,7 +3841,9 @@ class NXProjectionTab(QtWidgets.QWidget):
 
     def open_panel(self):
         panel = self.panel_combo.selected
-        dialogs = {'Projection': ProjectionDialog, 'Limits': LimitDialog,
+        dialogs = {'Projection': ProjectionDialog,
+                   'Rotation': RotationDialog,
+                   'Limits': LimitDialog,
                    'Scan': ScanDialog}
         self.plotview.make_active()
         if not self.plotview.mainwindow.panel_is_running(panel):

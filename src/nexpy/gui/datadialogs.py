@@ -2389,7 +2389,7 @@ class CustomizeTab(NXTab):
 
 
 class ProjectionDialog(NXPanel):
-    """Dialog to set plot window limits"""
+    """Tab to generate 1D or 2D projections of the data."""
 
     def __init__(self, parent=None):
         super().__init__('Projection', title='Projection Panel', apply=False,
@@ -2399,7 +2399,7 @@ class ProjectionDialog(NXPanel):
 
 
 class ProjectionTab(NXTab):
-    """Tab to set plot window limits"""
+    """Tab to generate 1D or 2D projections of the data."""
 
     def __init__(self, label, parent=None):
 
@@ -2833,6 +2833,336 @@ class ProjectionTab(NXTab):
         self.block_signals(False)
         self.draw_rectangle()
         self.update_overbox()
+
+    def reset(self):
+        self.block_signals(True)
+        for axis in range(self.ndim):
+            if (self.plotview.axis[axis] is self.plotview.xaxis or
+                    self.plotview.axis[axis] is self.plotview.yaxis):
+                self.minbox[axis].setValue(self.minbox[axis].data.min())
+                self.maxbox[axis].setValue(self.maxbox[axis].data.max())
+            else:
+                lo, hi = self.plotview.axis[axis].get_limits()
+                minbox, maxbox = self.minbox[axis], self.maxbox[axis]
+                ilo, ihi = minbox.indexFromValue(lo), maxbox.indexFromValue(hi)
+                minbox.setValue(minbox.valueFromIndex(ilo))
+                maxbox.setValue(maxbox.valueFromIndex(ihi))
+        self.block_signals(False)
+        self.update()
+
+    def close(self):
+        try:
+            if self._rectangle:
+                self._rectangle.remove()
+            self.plotview.draw()
+        except Exception:
+            pass
+
+
+class RotationDialog(NXPanel):
+    """Dialog to rotate the data."""
+
+    def __init__(self, parent=None):
+        super().__init__('Rotation', title='Rotation Panel', apply=False,
+                         parent=parent)
+        self.tab_class = RotationTab
+        self.plotview_sort = True
+
+
+class RotationTab(NXTab):
+    """Tab to rotate the data."""
+
+    def __init__(self, label, parent=None):
+
+        super().__init__(label, parent=parent)
+
+        self.plotview = self.active_plotview
+        self.ndim = self.plotview.ndim
+        if self.ndim <= 1:
+            raise NeXusError("The rotation panel does not apply to 1D data")
+
+        self.xlabel, self.xbox = (self.label('X-Axis'),
+                                  NXComboBox(self.set_xaxis))
+        self.ylabel, self.ybox = (self.label('Y-Axis'),
+                                  NXComboBox(self.set_yaxis))
+        axis_layout = self.make_layout(self.xlabel, self.xbox,
+                                       self.ylabel, self.ybox)
+        self.set_axes()
+
+        self.parameters = GridParameters()
+        self.parameters.add('angle', 0.0, 'Rotation Angle (degrees)')
+        self.parameters.add('x-name', 'x', 'X-axis field name')
+        self.parameters.add('x-long', '', 'X-axis long name')
+        self.parameters.add('y-name', 'y', 'Y-axis field name')
+        self.parameters.add('y-long', '', 'Y-axis long name')
+        rotation_layout = self.parameters.grid(header=False)
+
+        axis_grid = QtWidgets.QGridLayout()
+        axis_grid.setSpacing(10)
+        headers = ['Axis', 'Minimum', 'Maximum', 'Lock']
+        width = [50, 100, 100, 25]
+        column = 0
+        for header in headers:
+            label = NXLabel(header, bold=True, align='center')
+            axis_grid.addWidget(label, 0, column)
+            axis_grid.setColumnMinimumWidth(column, width[column])
+            column += 1
+
+        row = 0
+        self.minbox = {}
+        self.maxbox = {}
+        self.lockbox = {}
+        for axis in range(self.ndim):
+            row += 1
+            self.minbox[axis] = NXSpinBox(self.set_limits)
+            self.maxbox[axis] = NXSpinBox(self.set_limits)
+            self.lockbox[axis] = NXCheckBox(slot=self.set_lock)
+            axis_grid.addWidget(self.label(self.plotview.axis[axis].name),
+                                row, 0)
+            axis_grid.addWidget(self.minbox[axis], row, 1)
+            axis_grid.addWidget(self.maxbox[axis], row, 2)
+            axis_grid.addWidget(self.lockbox[axis], row, 3,
+                                alignment=QtCore.Qt.AlignHCenter)
+
+        row += 1
+        self.save_button = NXPushButton("Save", self.save_rotation, self)
+        axis_grid.addWidget(self.save_button, row, 1)
+        self.plot_button = NXPushButton("Plot", self.plot_rotation, self)
+        axis_grid.addWidget(self.plot_button, row, 2)
+
+        self.set_layout(axis_layout, rotation_layout, axis_grid,
+                        self.checkboxes(("sum", "Sum Z-Axes", False)))
+
+        self.initialize()
+        self._rectangle = None
+        self._minpos = None
+        self.xbox.setFocus()
+
+    def initialize(self):
+        for axis in range(self.ndim):
+            self.minbox[axis].data = self.maxbox[axis].data = \
+                self.plotview.axis[axis].centers
+            self.minbox[axis].setMaximum(self.minbox[axis].data.size-1)
+            self.maxbox[axis].setMaximum(self.maxbox[axis].data.size-1)
+            self.minbox[axis].diff = self.maxbox[axis].diff = None
+            self.block_signals(True)
+            self.minbox[axis].setValue(self.plotview.axis[axis].lo)
+            self.maxbox[axis].setValue(self.plotview.axis[axis].hi)
+            self.block_signals(False)
+
+    def get_axes(self):
+        return self.plotview.xtab.get_axes()
+
+    def set_axes(self):
+        axes = self.get_axes()
+        self.xbox.clear()
+        self.xbox.add(*axes)
+        self.xbox.select(self.plotview.xaxis.name)
+        self.ybox.clear()
+        self.ybox.add(*axes)
+        self.ybox.select(self.plotview.yaxis.name)
+
+    @property
+    def xaxis(self):
+        return self.xbox.currentText()
+
+    def set_xaxis(self):
+        if self.xaxis == self.yaxis:
+            self.ybox.select('None')
+        self.update_overbox()
+
+    @property
+    def yaxis(self):
+        return self.ybox.selected
+
+    def set_yaxis(self):
+        if self.yaxis == self.xaxis:
+            for idx in range(self.xbox.count()):
+                if self.xbox.itemText(idx) != self.yaxis:
+                    self.xbox.setCurrentIndex(idx)
+                    break
+        self.panel.update()
+
+    def set_limits(self):
+        self.block_signals(True)
+        for axis in range(self.ndim):
+            if self.lockbox[axis].isChecked():
+                min_value = self.maxbox[axis].value() - self.maxbox[axis].diff
+                self.minbox[axis].setValue(min_value)
+            elif self.minbox[axis].value() > self.maxbox[axis].value():
+                self.maxbox[axis].setValue(self.minbox[axis].value())
+        self.block_signals(False)
+        self.draw_rectangle()
+
+    def get_limits(self, axis=None):
+        def get_indices(minbox, maxbox):
+            start, stop = minbox.index, maxbox.index+1
+            if minbox.reversed:
+                start, stop = len(maxbox.data)-stop, len(minbox.data)-start
+            return start, stop
+        if axis:
+            return get_indices(self.minbox[axis], self.maxbox[axis])
+        else:
+            return [get_indices(self.minbox[axis], self.maxbox[axis])
+                    for axis in range(self.ndim)]
+
+    def set_lock(self):
+        for axis in range(self.ndim):
+            if self.lockbox[axis].isChecked():
+                lo, hi = self.minbox[axis].value(), self.maxbox[axis].value()
+                self.minbox[axis].diff = self.maxbox[axis].diff = max(hi - lo,
+                                                                      0.0)
+                self.minbox[axis].setDisabled(True)
+            else:
+                self.minbox[axis].diff = self.maxbox[axis].diff = None
+                self.minbox[axis].setDisabled(False)
+
+    @property
+    def summed(self):
+        try:
+            return self.checkbox["sum"].isChecked()
+        except Exception:
+            return False
+
+    @summed.setter
+    def summed(self, value):
+        self.checkbox["sum"].setChecked(value)
+
+    def get_rotation(self):
+        from scipy.ndimage import rotate
+        x = self.get_axes().index(self.xaxis)
+        y = self.get_axes().index(self.yaxis)
+        axes = [y, x]
+        limits = self.get_limits()
+        shape = self.plotview.data.nxsignal.shape
+        if (len(shape)-len(limits) > 0 and
+                len(shape)-len(limits) == shape.count(1)):
+            axes, limits = fix_projection(shape, axes, limits)
+        elif any([limits[axis][1]-limits[axis][0] <= 1 for axis in axes]):
+            raise NeXusError("One of the rotation axes has zero range")
+        if self.plotview.rgb_image:
+            limits.append((None, None))
+
+        data = self.plotview.data.project(axes, limits, summed=self.summed)
+
+        angle = self.parameters['angle'].value
+        signal = data.nxsignal
+        self._minpos = min(signal[signal > 0.0])
+        zr = NXfield(rotate(signal, angle=angle, mode='constant'),
+                     name=signal.nxname)
+        if 'long_name' in signal.attrs:
+            zr.attrs['long_name'] = signal.attrs['long_name']
+        y, x = data.nxaxes
+        dy = (y[1] - y[0]) * np.sin(np.radians(angle))
+        dx = (x[1] - x[0]) * np.cos(np.radians(angle))
+
+        ny = zr.shape[0]
+        yr = NXfield([(-dy * (ny // 2) + i*dy) for i in range(ny)],
+                     name=self.parameters['y-name'].value)
+        if self.parameters['y-long'].value:
+            yr.attrs['long_name'] = self.parameters['y-long'].value
+        nx = zr.shape[1]
+        xr = NXfield([(-dx * (nx // 2) + i*dx) for i in range(nx)],
+                     name=self.parameters['x-name'].value)
+        if self.parameters['x-long'].value:
+            xr.attrs['long_name'] = self.parameters['x-long'].value
+
+        return NXdata(zr, (yr, xr), title=data.nxtitle)       
+
+    def save_rotation(self):
+        try:
+            keep_data(self.get_rotation())
+        except NeXusError as error:
+            report_error("Saving Rotation", error)
+
+    def plot_rotation(self):
+        try:
+            rotation = self.get_rotation()
+            if self.plot:
+                plotview = self.plot
+            else:
+                from .plotview import NXPlotView
+                plotview = NXPlotView('Rotation')
+                self.over = False
+            if self.plotview.logv:
+                plotview.plot(rotation, vmin=self._minpos)
+            else:
+                plotview.plot(rotation)
+            plotview.logv = self.plotview.logv
+            plotview.cmap = self.plotview.cmap
+            plotview.interpolation = self.plotview.interpolation
+            plotview.make_active()
+            plotview.raise_()
+        except NeXusError as error:
+            report_error("Plotting Rotation", error)
+
+    @property
+    def plot(self):
+        if 'Rotation' in self.plotviews:
+            return self.plotviews['Rotation']
+        else:
+            return None
+
+    def block_signals(self, block=True):
+        for axis in range(self.ndim):
+            self.minbox[axis].blockSignals(block)
+            self.maxbox[axis].blockSignals(block)
+
+    @property
+    def rectangle(self):
+        if self._rectangle not in self.plotview.ax.patches:
+            self._rectangle = NXpolygon(self.get_rectangle(), closed=True,
+                                        plotview=self.plotview).shape
+            self._rectangle.set_edgecolor(self.plotview._gridcolor)
+            self._rectangle.set_facecolor('none')
+            self._rectangle.set_linestyle('dashed')
+            self._rectangle.set_linewidth(2)
+        return self._rectangle
+
+    def get_rectangle(self):
+        xp = self.plotview.xaxis.dim
+        yp = self.plotview.yaxis.dim
+        x0 = self.minbox[xp].minBoundaryValue(self.minbox[xp].index)
+        x1 = self.maxbox[xp].maxBoundaryValue(self.maxbox[xp].index)
+        y0 = self.minbox[yp].minBoundaryValue(self.minbox[yp].index)
+        y1 = self.maxbox[yp].maxBoundaryValue(self.maxbox[yp].index)
+        xy = [(x0, y0), (x0, y1), (x1, y1), (x1, y0)]
+        if self.plotview.skew is not None:
+            return [self.plotview.transform(_x, _y) for _x, _y in xy]
+        else:
+            return xy
+
+    def draw_rectangle(self):
+        self.rectangle.set_xy(self.get_rectangle())
+        self.plotview.draw()
+
+    def rectangle_visible(self):
+        return not self.checkbox["hide"].isChecked()
+
+    def hide_rectangle(self):
+        if self.checkbox["hide"].isChecked():
+            self.rectangle.set_visible(False)
+        else:
+            self.rectangle.set_visible(True)
+        self.plotview.draw()
+
+    def update(self):
+        self.block_signals(True)
+        for axis in range(self.ndim):
+            lo, hi = self.plotview.axis[axis].get_limits()
+            minbox, maxbox = self.minbox[axis], self.maxbox[axis]
+            ilo, ihi = minbox.indexFromValue(lo), maxbox.indexFromValue(hi)
+            if (self.plotview.axis[axis] is self.plotview.xaxis or
+                    self.plotview.axis[axis] is self.plotview.yaxis):
+                ilo = ilo + 1
+                ihi = max(ilo, ihi-1)
+                if lo > minbox.value():
+                    minbox.setValue(minbox.valueFromIndex(ilo))
+                if hi < maxbox.value():
+                    maxbox.setValue(maxbox.valueFromIndex(ihi))
+        self.block_signals(False)
+        self.draw_rectangle()
+        self.sort_copybox()
 
     def reset(self):
         self.block_signals(True)

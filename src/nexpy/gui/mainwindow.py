@@ -39,8 +39,8 @@ from .datadialogs import (AddDialog, CustomizeDialog, DirectoryDialog,
                           ManageBackupsDialog, NewDialog, PasteDialog,
                           PlotDialog, PlotScalarDialog, PreferencesDialog,
                           ProjectionDialog, RemovePluginDialog, RenameDialog,
-                          RestorePluginDialog, ScanDialog, SignalDialog,
-                          UnlockDialog, ViewDialog)
+                          RestorePluginDialog, RotationDialog, ScanDialog,
+                          SignalDialog, UnlockDialog, ViewDialog)
 from .fitdialogs import FitDialog
 from .plotview import NXPlotView
 from .pyqt import QtCore, QtGui, QtWidgets, getOpenFileName, getSaveFileName
@@ -682,11 +682,17 @@ class MainWindow(QtWidgets.QMainWindow):
             triggered=self.show_limits_panel)
         self.add_menu_action(self.window_menu, self.limit_action)
 
-        self.panel_action = QtWidgets.QAction(
+        self.projection_action = QtWidgets.QAction(
             "Show Projection Panel", self, shortcut=QtGui.QKeySequence(
                 "Ctrl+Alt+P"),
             triggered=self.show_projection_panel)
-        self.add_menu_action(self.window_menu, self.panel_action)
+        self.add_menu_action(self.window_menu, self.projection_action)
+
+        self.rotation_action = QtWidgets.QAction(
+            "Show Rotation Panel", self, shortcut=QtGui.QKeySequence(
+                "Ctrl+Alt+R"),
+            triggered=self.show_rotation_panel)
+        self.add_menu_action(self.window_menu, self.rotation_action)
 
         self.scan_action = QtWidgets.QAction(
             "Show Scan Panel", self, shortcut=QtGui.QKeySequence("Ctrl+Alt+S"),
@@ -1930,8 +1936,22 @@ class MainWindow(QtWidgets.QMainWindow):
         except NeXusError as error:
             report_error("Showing Projection Panel", error)
 
+    def show_rotation_panel(self):
+        if self.active_plotview.label == 'Rotation':
+            if ('Rotation' in self.panels and
+                    self.panels['Rotation'].isVisible()):
+                self.panels['Rotation'].raise_()
+                self.panels['Rotation'].activateWindow()
+            return
+        try:
+            if not self.panel_is_running('Rotation'):
+                self.panels['Rotation'] = RotationDialog()
+            self.panels['Rotation'].activate(self.active_plotview.label)
+        except NeXusError as error:
+            report_error("Showing Rotation Panel", error)
+
     def show_scan_panel(self):
-        if self.plotview.label == 'Projection':
+        if self.plotview.label == 'Scan':
             if 'Scan' in self.panels:
                 self.panels['Scan'].raise_()
                 self.panels['Scan'].activateWindow()
