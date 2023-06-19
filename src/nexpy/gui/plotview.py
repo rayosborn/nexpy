@@ -26,20 +26,25 @@ import copy
 import numbers
 import os
 import warnings
+from contextlib import ExitStack
 from posixpath import basename, dirname
 
 import matplotlib as mpl
+import matplotlib.axis as maxis
+import matplotlib.spines as mspines
+import matplotlib.transforms as transforms
 import numpy as np
+from matplotlib.axes import Axes
 from matplotlib.backend_bases import (FigureCanvasBase, FigureManagerBase,
                                       NavigationToolbar2)
 from matplotlib.backends.backend_qt import FigureManagerQT as FigureManager
 from matplotlib.backends.backend_qt import NavigationToolbar2QT
-from matplotlib.backends.backend_qtagg import (FigureCanvasQTAgg as
-                                               FigureCanvas)
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.colors import LogNorm, Normalize, SymLogNorm
 from matplotlib.figure import Figure
 from matplotlib.image import imread
 from matplotlib.lines import Line2D
+from matplotlib.projections import register_projection
 from matplotlib.ticker import AutoLocator, LogLocator, ScalarFormatter
 from pkg_resources import parse_version, resource_filename
 
@@ -94,7 +99,7 @@ if parse_version(mpl.__version__) >= parse_version('3.5.0'):
     mpl.colormaps.register(divgray_map())
     cmaps = [cm for cm in cmaps if cm in mpl.colormaps]
 else:
-    from matplotlib.cm import get_cmap, register_cmap, cmap_d
+    from matplotlib.cm import cmap_d, get_cmap, register_cmap
     register_cmap('parula', parula_map())
     register_cmap('xtec', xtec_map())
     register_cmap('divgray', divgray_map())
@@ -1071,8 +1076,7 @@ class NXPlotView(QtWidgets.QDialog):
             self.set_data_norm()
             self.figure.clf()
             if self._skew_angle and self._aspect == 'equal':
-                ax = self.figure.add_subplot(Subplot(self.figure, 1, 1, 1,
-                                             grid_helper=self.grid_helper()))
+                ax = self.figure.add_subplot(projection='NXskew')
                 self.skewed = True
             else:
                 ax = self.figure.add_subplot(1, 1, 1)
@@ -1407,7 +1411,7 @@ class NXPlotView(QtWidgets.QDialog):
         else:
             x, y = np.asarray(x), np.asarray(y)
             angle = np.radians(self.skew)
-            return 1.*x+np.cos(angle)*y,  np.sin(angle)*y
+            return 1.*x+y/np.tan(angle),  y
 
     def inverse_transform(self, x, y):
         """Return the inverse transform of the x and y values."""
@@ -1416,7 +1420,7 @@ class NXPlotView(QtWidgets.QDialog):
         else:
             x, y = np.asarray(x), np.asarray(y)
             angle = np.radians(self.skew)
-            return 1.*x-y/np.tan(angle),  y/np.sin(angle)
+            return 1.*x-y/np.tan(angle),  y
 
     def set_log_axis(self, name):
         """Set x and y axis scales when the log option is on or off."""
@@ -4123,3 +4127,102 @@ class NXNavigationToolbar(NavigationToolbar2QT, QtWidgets.QToolBar):
             self.plotview.canvas.setFocus()
         else:
             self.set_message('')
+
+
+class NXSkewXTick(maxis.XTick):
+    def draw(self, renderer):
+        with ExitStack() as stack:
+            for artist in [self.gridline, self.tick1line, self.tick2line,
+                           self.label1, self.label2]:
+                stack.callback(artist.set_visible, artist.get_visible())
+            needs_lower = transforms.interval_contains(
+                self.axes.lower_xlim, self.get_loc())
+            needs_upper = transforms.interval_contains(
+                self.axes.upper_xlim, self.get_loc())
+            self.tick1line.set_visible(
+                self.tick1line.get_visible() and needs_lower)
+            self.label1.set_visible(
+                self.label1.get_visible() and needs_lower)
+            self.tick2line.set_visible(
+                self.tick2line.get_visible() and needs_upper)
+            self.label2.set_visible(
+                self.label2.get_visible() and needs_upper)
+            super().draw(renderer)
+
+    def get_view_interval(self):
+        return self.axes.xaxis.get_view_interval()
+
+
+class NXSkewXAxis(maxis.XAxis):
+    def _get_tick(self, major):
+        return NXSkewXTick(self.axes, None, major=major)
+
+    def get_view_interval(self):
+        return self.axes.upper_xlim[0], self.axes.lower_xlim[1]
+
+
+class NXSkewSpine(mspines.Spine):
+    def _adjust_location(self):
+        pts = self._path.vertices
+        if self.spine_type == 'top':
+            pts[:, 0] = self.axes.upper_xlim
+        else:
+            pts[:, 0] = self.axes.lower_xlim
+
+
+class NXSkewAxes(Axes):
+
+    name = 'NXskew'
+
+    def __repr__(self):
+        plotview = get_plotview()
+        return f"NXSkewAxes(skew_angle={plotview.skew})"
+
+    def _init_axis(self):
+        self.xaxis = NXSkewXAxis(self)
+        self.spines.top.register_axis(self.xaxis)
+        self.spines.bottom.register_axis(self.xaxis)
+        self.yaxis = maxis.YAxis(self)
+        self.spines.left.register_axis(self.yaxis)
+        self.spines.right.register_axis(self.yaxis)
+
+    def _gen_axes_spines(self):
+        spines = {'top': NXSkewSpine.linear_spine(self, 'top'),
+                  'bottom': mspines.Spine.linear_spine(self, 'bottom'),
+                  'left': mspines.Spine.linear_spine(self, 'left'),
+                  'right': mspines.Spine.linear_spine(self, 'right')}
+        return spines
+
+    def _set_lim_and_transforms(self):
+
+        plotview = get_plotview()
+        skew_angle = 90.0 - plotview.skew
+
+        super()._set_lim_and_transforms()
+
+        self.transDataToAxes = (
+            self.transScale
+            + self.transLimits
+            + transforms.Affine2D().skew_deg(skew_angle, 0)
+        )
+        self.transData = self.transDataToAxes + self.transAxes
+
+        self._xaxis_transform = (
+            transforms.blended_transform_factory(
+                self.transScale + self.transLimits,
+                transforms.IdentityTransform())
+            + transforms.Affine2D().skew_deg(skew_angle, 0)
+            + self.transAxes
+        )
+
+    @property
+    def lower_xlim(self):
+        return self.axes.viewLim.intervalx
+
+    @property
+    def upper_xlim(self):
+        pts = [[0., 1.], [1., 1.]]
+        return self.transDataToAxes.inverted().transform(pts)[:, 0]
+
+
+register_projection(NXSkewAxes)
