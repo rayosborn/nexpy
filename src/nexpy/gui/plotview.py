@@ -45,7 +45,8 @@ from matplotlib.figure import Figure
 from matplotlib.image import imread
 from matplotlib.lines import Line2D
 from matplotlib.projections import register_projection
-from matplotlib.ticker import AutoLocator, LogLocator, ScalarFormatter
+from matplotlib.ticker import (AutoLocator, LogLocator, MultipleLocator,
+                               ScalarFormatter)
 from pkg_resources import parse_version, resource_filename
 
 from .pyqt import QtCore, QtGui, QtWidgets
@@ -1077,6 +1078,7 @@ class NXPlotView(QtWidgets.QDialog):
             self.figure.clf()
             if self._skew_angle and self._aspect == 'equal':
                 ax = self.figure.add_subplot(projection='NXskew')
+                ax.xaxis.set_major_locator(MultipleLocator(10))
                 self.skewed = True
             else:
                 ax = self.figure.add_subplot(1, 1, 1)
@@ -4188,7 +4190,7 @@ class NXSkewAxes(Axes):
 
     def _gen_axes_spines(self):
         spines = {'top': NXSkewSpine.linear_spine(self, 'top'),
-                  'bottom': mspines.Spine.linear_spine(self, 'bottom'),
+                  'bottom': NXSkewSpine.linear_spine(self, 'bottom'),
                   'left': mspines.Spine.linear_spine(self, 'left'),
                   'right': mspines.Spine.linear_spine(self, 'right')}
         return spines
