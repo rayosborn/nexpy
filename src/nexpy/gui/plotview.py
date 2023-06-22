@@ -1627,11 +1627,17 @@ class NXPlotView(QtWidgets.QDialog):
                         'scaling_factor' in _axes[-2].attrs):
                     _xscale = _axes[-1].attrs['scaling_factor']
                     _yscale = _axes[-2].attrs['scaling_factor']
+                    if self.skew:
+                        _yscale = _yscale * np.sin(np.radians(self.skew))
                     return float(_yscale / _xscale)
                 elif 'scaling_factor' in _axes[-1].attrs:
                     return 1.0 / _axes[-1].attrs['scaling_factor']
                 elif 'scaling_factor' in _axes[-2].attrs:
-                    return _axes[-2].attrs['scaling_factor']
+                    if self.skew:
+                        return (_axes[-2].attrs['scaling_factor'] *
+                                np.sin(np.radians(self.skew)))
+                    else:
+                        return _axes[-2].attrs['scaling_factor']
                 else:
                     return 'equal'
             except Exception:
