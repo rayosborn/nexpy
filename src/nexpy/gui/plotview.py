@@ -3902,9 +3902,6 @@ class NXNavigationToolbar(NavigationToolbar2QT, QtWidgets.QToolBar):
             labelAction.setVisible(True)
 
         NavigationToolbar2.__init__(self, canvas)
-        if in_dark_mode() and (
-                parse_version(QtCore.__version__) <= parse_version('5.15')):
-            self.setStyleSheet('color: black')
         self.plotview = canvas.parent()
         self.zoom()
 

@@ -28,6 +28,9 @@ from matplotlib import __version__ as mplversion
 from matplotlib import rcParams
 from matplotlib.colors import colorConverter, hex2color, rgb2hex
 from pkg_resources import parse_version
+from qdarkstyle import load_stylesheet
+from qdarkstyle.dark.palette import DarkPalette
+from qdarkstyle.light.palette import LightPalette
 
 from .pyqt import QtCore, QtWidgets
 
@@ -41,8 +44,8 @@ except ImportError:
     fabio = None
 
 from nexusformat.nexus import (NeXusError, NXcollection, NXdata, NXfield,
-                               NXLock, NXLockException, NXnote,
-                               nxgetconfig, nxload, nxsetconfig)
+                               NXLock, NXLockException, NXnote, nxgetconfig,
+                               nxload, nxsetconfig)
 
 ansi_re = re.compile(r'\x1b' + r'\[([\dA-Fa-f;]*?)m')
 
@@ -737,18 +740,18 @@ def define_mode(mode=None):
     if mode == 'Dark':
         _mainwindow.console.set_default_style('linux')
         if legacy_pyqt:
-            _mainwindow.statusBar().setStyleSheet('color: black')
+            _mainwindow.app.app.setStyleSheet(load_stylesheet(DarkPalette))
     else:
         _mainwindow.console.set_default_style()
+        if legacy_pyqt:
+            _mainwindow.app.app.setStyleSheet(load_stylesheet(LightPalette))
+
     for dialog in _mainwindow.dialogs:
         if dialog.windowTitle() == 'Script Editor':
             for tab in [dialog.tabs[t] for t in dialog.tabs]:
                 tab.define_style()
         elif dialog.windowTitle().startswith('Log File'):
             dialog.format_log()
-    if legacy_pyqt:
-        for plotview in _mainwindow.plotviews.values():
-            plotview.otab.setStyleSheet('color: black')
 
 
 class NXListener(QtCore.QObject):
