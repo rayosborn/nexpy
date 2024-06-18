@@ -65,7 +65,8 @@ from nexusformat.nexus import NeXusError, NXdata, NXfield
 
 from .. import __version__
 from .datadialogs import (CustomizeDialog, ExportDialog, LimitDialog,
-                          ProjectionDialog, ScanDialog, StyleDialog)
+                          ProjectionDialog, RotationDialog, ScanDialog,
+                          StyleDialog)
 from .utils import (boundaries, centers, divgray_map, find_nearest,
                     fix_projection, get_color, in_dark_mode, iterable,
                     keep_data, parula_map, report_error, report_exception,
@@ -3863,6 +3864,7 @@ class NXNavigationToolbar(NavigationToolbar2QT, QtWidgets.QToolBar):
         ('Zoom', 'Zoom to rectangle', 'zoom_to_rect', 'zoom'),
         (None, None, None, None),
         ('Aspect', 'Set aspect ratio to equal', 'equal', 'set_aspect'),
+        ('Rotate', 'Rotate plot', 'rotate-plot', 'rotate_plot'),
         ('Customize', 'Customize plot', 'customize', 'edit_parameters'),
         ('Style', 'Modify style', 'modify-style', 'modify_style'),
         (None, None, None, None),
@@ -3942,6 +3944,15 @@ class NXNavigationToolbar(NavigationToolbar2QT, QtWidgets.QToolBar):
         self.plotview.reset_plot_limits(autoscale)
         if self.plotview.skew:
             self.plotview.grid(self.plotview._grid, self.plotview._minorgrid)
+
+    def rotate_plot(self):
+        """Launch the Rotation Panel."""
+        self.plotview.make_active()
+        if not self.plotview.mainwindow.panel_is_running('Rotation'):
+            self.plotview.panels['Rotation'] = RotationDialog()
+        self.plotview.panels['Rotation'].activate(self.plotview.label)
+        self.plotview.panels['Rotation'].setVisible(True)
+        self.plotview.panels['Rotation'].raise_()
 
     def edit_parameters(self):
         """Launch the Customize Panel."""

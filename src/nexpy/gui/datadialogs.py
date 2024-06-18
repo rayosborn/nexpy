@@ -2438,6 +2438,92 @@ class CustomizeTab(NXTab):
         self.plotview.draw()
 
 
+class RotationDialog(NXPanel):
+
+    def __init__(self, parent=None):
+        super().__init__('Rotation', title='Rotation Panel', parent=parent)
+        self.tab_class = RotationTab
+        self.plotview_sort = True
+
+
+class RotationTab(NXTab):
+
+    def __init__(self, label, parent=None):
+        super().__init__(label, parent=parent)
+
+        self.plotview = self.active_plotview
+        self.data = self.plotview.plotdata
+
+        self.parameters = GridParameters()
+        self.parameters.add('title', self.plotview.title, 'Title')
+        self.parameters.add('xlabel', self.plotview.xaxis.label,
+                            'X-Axis Label')
+        self.parameters.add('ylabel', self.plotview.yaxis.label,
+                            'Y-Axis Label')
+        self.parameters.add('angle', 0.0, 'Rotation Angle (degrees)')
+
+        self.set_layout(self.parameters.grid(header=False, width=200),
+                        self.checkboxes(('reshape', 'Reshape Plot', True)),
+                        self.action_buttons(('Plot', self.rotate_plot),
+                                            ('Reset', self.reset_plot)))
+        self.parameters['title'].box.setFocus()
+
+    @property
+    def title(self):
+        return self.parameters['title'].value
+
+    @property
+    def xlabel(self):
+        return self.parameters['xlabel'].value
+
+    @property
+    def ylabel(self):
+        return self.parameters['ylabel'].value
+
+    @property
+    def angle(self):
+        return float(self.parameters['angle'].value)
+
+    @property
+    def reshape(self):
+        return self.checkbox['reshape'].isChecked()
+
+    @property
+    def pv(self):
+        if 'Rotation' in self.plotviews:
+            return self.plotviews['Rotation']
+        else:
+            from .plotview import NXPlotView
+            return NXPlotView('Rotation')
+
+    def rotate_plot(self):
+        from scipy.ndimage import rotate
+        signal = self.data.nxsignal
+        zr = NXfield(rotate(np.nan_to_num(signal, 0.0), angle=self.angle,
+                            mode='constant', reshape=self.reshape),
+                     name=signal.nxname)
+        if 'long_name' in signal.attrs:
+            zr.attrs['long_name'] = signal.attrs['long_name']
+        y, x = self.data.nxaxes
+        dy = (y[1] - y[0]) * np.sin(np.radians(self.angle))
+        dx = (x[1] - x[0]) * np.cos(np.radians(self.angle))
+
+        ny = zr.shape[0]
+        yr = NXfield([(-dy * (ny // 2) + i*dy) for i in range(ny)],
+                     name=self.ylabel)
+        nx = zr.shape[1]
+        xr = NXfield([(-dx * (nx // 2) + i*dx) for i in range(nx)],
+                     name=self.xlabel)
+
+        self.pv.plot(NXdata(zr, (yr, xr), title=self.title))
+
+    def reset_plot(self):
+        self.pv.plot(self.data)
+
+    def apply(self):
+        pass
+
+
 class StyleDialog(NXPanel):
 
     def __init__(self, parent=None):
