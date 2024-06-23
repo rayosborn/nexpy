@@ -2441,7 +2441,8 @@ class CustomizeTab(NXTab):
 class RotationDialog(NXPanel):
 
     def __init__(self, parent=None):
-        super().__init__('Rotation', title='Rotation Panel', parent=parent)
+        super().__init__('Rotation', title='Rotation Panel', apply=False,
+                         parent=parent)
         self.tab_class = RotationTab
         self.plotview_sort = True
 
@@ -2452,7 +2453,11 @@ class RotationTab(NXTab):
         super().__init__(label, parent=parent)
 
         self.plotview = self.active_plotview
-        self.data = self.plotview.plotdata
+        if self.plotview.plotdata.ndim == 1:
+            raise NeXusError('Rotation not possible for one-dimensional data')
+        else:
+            self.data = self.plotview.plotdata
+        self.aspect = self.plotview.aspect
 
         self.parameters = GridParameters()
         self.parameters.add('title', self.plotview.title, 'Title')
