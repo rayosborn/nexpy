@@ -2517,6 +2517,47 @@ class NXPlotView(QtWidgets.QDialog):
         self.draw()
         self.otab.push_current()
 
+    def scatter2D(self, x, y, z, **opts):
+        """Plot a 2D scatter plot based z(x,y) where x and y are pixel centers.
+
+        Parameters
+        ----------
+        x, y : NXfield
+            x and y values of pixel centers - one-dimensional
+        z : NXfield
+            intensity of pixels - two-dimensional
+        """
+        self.signal = z
+        self.axes = [y.average(1), x.average(0)]
+        self.x = self.axes[1].nxdata
+        self.y = self.axes[0].nxdata
+        self.v = self.signal.nxdata
+        self.axis['signal'] = self.vaxis = NXPlotAxis(self.signal)
+        self.axis[1] = self.xaxis = NXPlotAxis(self.axes[1])
+        self.axis[0] = self.yaxis = NXPlotAxis(self.axes[0])
+
+        self.figure.clf()
+        x, y, z = x.nxdata, y.nxdata, z.nxdata
+        z = z.flatten()
+        self.vaxis.min = self.vaxis.lo = z.min()
+        self.vaxis.max = self.vaxis.hi = z.max()
+        self.set_data_norm()
+        from matplotlib.cm import ScalarMappable
+        mapper = ScalarMappable(norm=self.norm, cmap=self.cmap)
+        mapper.set_array(z)
+        self.ax.scatter(x, y, c=z, vmin=self.vaxis.min, vmax=self.vaxis.max)
+        self.colorbar = self.figure.colorbar(mapper, ax=self.ax)
+        self.xaxis.lo, self.xaxis.hi = x.min(), x.max()
+        self.yaxis.lo, self.yaxis.hi = y.min(), y.max()
+        self.ax.set_xlabel(self.xaxis.label)
+        self.ax.set_ylabel(self.yaxis.label)
+        self.ax.set_title('2D Scatter Plot')
+        self.limits = (self.xaxis.min, self.xaxis.max,
+                       self.yaxis.min, self.yaxis.max)
+        self.init_tabs()
+        self.draw()
+        self.otab.push_current()
+
     def mpl_plot(self, ax=None, title=False, colorbar=False, **kwargs):
         import matplotlib.pyplot as plt
         from nexusformat.nexus.plot import plotview as pv
