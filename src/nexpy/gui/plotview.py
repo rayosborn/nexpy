@@ -2505,7 +2505,7 @@ class NXPlotView(QtWidgets.QDialog):
             region = vor.regions[vor.point_region[r]]
             polygon = [vor.vertices[i] for i in region if i != -1]
             self.ax.fill(*zip(*polygon), color=mapper.to_rgba(z[r]))
-        self.colorbar = self.figure.colorbar(mapper)
+        self.colorbar = self.figure.colorbar(mapper, ax=self.ax)
         self.xaxis.lo, self.xaxis.hi = x.min(), x.max()
         self.yaxis.lo, self.yaxis.hi = y.min(), y.max()
         self.ax.set_xlabel(self.xaxis.label)
