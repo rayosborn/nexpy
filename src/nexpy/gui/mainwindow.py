@@ -1458,9 +1458,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     raise NeXusError(
                         "Group must have the 'auxiliary_signals' attribute.")
                 self.treeview.status_message(node)
-                signals = [node.nxsignal]
-                signals.extend([node[signal] for signal
-                                in node.attrs['auxiliary_signals']])
+                signals = node.nxsignals
                 colors = get_colors(len(signals))
                 for i, signal in enumerate(signals):
                     if i == 0:
@@ -1485,10 +1483,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     raise NeXusError(
                         "Group must have the 'auxiliary_signals' attribute.")
                 self.treeview.status_message(node)
-                signals = [node.nxsignal]
-                signals.extend([node[signal] for signal
-                                in node.attrs['auxiliary_signals']
-                                if signal != node.nxsignal.nxname])
+                signals = node.nxsignals
                 colors = get_colors(len(signals))
                 for i, signal in enumerate(signals):
                     if i == 0:
