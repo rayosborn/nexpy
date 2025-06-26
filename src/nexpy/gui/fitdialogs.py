@@ -29,12 +29,12 @@ def get_models():
     Return a dictionary of LMFIT models.
 
     This function returns a dictionary of LMFIT models, including those
-    defined in the LMFIT package and those defined in the
-    ``nexpy.api.frills.models`` package. Additional models can also be
-    defined in the ``~/.nexpy/models`` directory or in another installed
-    package, which declares the entry point ``nexpy.models``. The models
-    are returned as a dictionary where the keys are the names of the
-    models and the values are the classes defining the models.
+    defined in the LMFIT package and those defined in ``nexpy.models``.
+    Additional models can also be defined in the ``~/.nexpy/models``
+    directory or in another installed package, which declares the entry
+    point ``nexpy.models``. The models are returned as a dictionary
+    where the keys are the names of the models and the values are the
+    classes defining the models.
     """
     from lmfit.models import lmfit_models
     models = lmfit_models
@@ -183,6 +183,308 @@ class NXModel(Model):
         for i, p in enumerate(pars):
             pars[p].value = _guess[i]
         return pars
+
+
+class NXFit:
+
+    def __init__(self, data=None, use_errors=True):
+        self.data = data
+        self.use_errors = use_errors
+        self.model = None
+        self.fit = None
+        self.method = None
+        self.all_models = get_models()
+
+    def __repr__(self):
+        return f'NXFit({self.data.nxpath})'
+
+    def initialize_data(self, data):
+        """
+        Initialize the data to be fitted.
+
+        Parameters
+        ----------
+        data : NXdata
+            The data to be fitted.
+
+        Raises
+        ------
+        NeXusError
+            If the data is not one-dimensional.
+        """
+        if isinstance(data, NXdata):
+            if data.ndim != 1:
+                raise NeXusError(
+                    "Fitting only possible on one-dimensional data")
+            self._data = NXdata()
+            self._data['signal'] = data.nxsignal
+            self._data.nxsignal = self._data['signal']
+            if data.nxaxes[0].size == data.nxsignal.size + 1:
+                self._data['axis'] = data.nxaxes[0].centers()
+            elif data.nxaxes[0].size == data.nxsignal.size:
+                self._data['axis'] = data.nxaxes[0]
+            else:
+                raise NeXusError("Data has invalid axes")
+            self._data.nxaxes = [self._data['axis']]
+            if data.nxerrors:
+                self._data.nxerrors = data.nxerrors
+                self.poisson_errors = False
+            else:
+                self.poisson_errors = True
+            self._data['title'] = data.nxtitle
+        else:
+            raise NeXusError("Must be an NXdata group")
+
+    @property
+    def data(self):
+        """The data to be fitted."""
+        try:
+            xmin, xmax = self.get_limits()
+            axis = self._data.nxaxes[0]
+            if xmin > axis.max() or xmax < axis.min():
+                raise NeXusError('Invalid data range')
+            else:
+                return self._data[xmin:xmax]
+        except NeXusError as error:
+            report_error("Fitting data", error)
+
+    @property
+    def signal(self):
+        """
+        The data to be fitted as a one-dimensional array.
+
+        If the data is masked, the mask is removed before returning the
+        data.
+        """
+        signal = self.data['signal']
+        if signal.mask:
+            return signal.nxdata.compressed().astype(np.float64)
+        else:
+            return signal.nxdata.astype(np.float64)
+
+    @property
+    def axis(self):
+        """
+        The x-axis values of the data to be fitted.
+
+        If the data is masked, the mask is removed before returning the
+        axis values.
+        """
+        data = self.data
+        signal = data['signal'].nxdata
+        axis = data['axis'].nxdata.astype(np.float64)
+        if isinstance(signal, np.ma.MaskedArray):
+            return np.ma.masked_array(axis, mask=signal.mask).compressed()
+        else:
+            return axis
+
+    @property
+    def errors(self):
+        """
+        The data errors as a one-dimensional array.
+
+        If the data is masked, the mask is removed before returning the
+        errors. If the data has no errors, returns None.
+        """
+        data = self.data
+        if data.nxerrors:
+            errors = data.nxerrors.nxdata.astype(np.float64)
+            signal = data['signal'].nxdata
+            if isinstance(signal, np.ma.MaskedArray):
+                return np.ma.masked_array(
+                    errors, mask=signal.mask).compressed()
+            else:
+                return errors
+        else:
+            return None
+
+    @property
+    def weights(self):
+        """
+        The data weights as a one-dimensional array.
+
+        If the data is masked, the mask is removed before returning the
+        weights. If the data has no errors, returns None.
+        """
+        if self.errors is not None and np.all(self.errors):
+            return 1.0 / self.errors
+        else:
+            return None
+
+    def define_errors(self):
+        """
+        Define the errors for the fit.
+
+        If ``self.poisson_errors`` is True, the errors are set to the
+        square root of the signal, but with a minimum of 1. Otherwise,
+        the errors attribute is deleted.
+        """
+        if self.poisson_errors:
+            self._data.nxerrors = np.sqrt(np.where(self._data.nxsignal < 1, 1,
+                                                   self._data.nxsignal))
+        else:
+            del self._data[self._data.nxerrors.nxname]
+
+    @property
+    def parameters(self):
+        """
+        The LMFIT Parameters object containing all the models.
+
+        This property is a read-only property that returns a Parameters
+        object that is a composite of all the parameters from all the
+        models currently in the FitTab. It is used by the FitTab to pass
+        the parameters to the LMFIT minimizer.
+
+        Returns
+        -------
+        Parameters
+            The LMFIT Parameters object that contains all the parameters
+            for all the models.
+        """
+        _parameters = Parameters()
+        for m in self.models:
+            _parameters += m['parameters']
+        return _parameters
+
+    @parameters.setter
+    def parameters(self, new_parameters):
+        for m in self.models:
+            for p in m['parameters']:
+                if p in new_parameters:
+                    m['parameters'][p].value = new_parameters[p].value
+                    m['parameters'][p].min = new_parameters[p].min
+                    m['parameters'][p].max = new_parameters[p].max
+                    m['parameters'][p].vary = new_parameters[p].vary
+                    m['parameters'][p].expr = new_parameters[p].expr
+                    m['parameters'][p].stderr = new_parameters[p].stderr
+                    m['parameters'][p].correl = new_parameters[p].correl
+
+    def compressed_name(self, name):
+        """Converts a model name to a compressed name"""
+        return re.sub(r'([a-zA-Z_ ]*) [#] (\d*)$', r'\1_\2',
+                      name, count=1).replace(' ', '_')
+
+    def expanded_name(self, name):
+        """Converts a compressed name to a model name"""
+        return re.sub(r'([a-zA-Z_]*)_(\d*)$', r'\1 # \2',
+                      name, count=1).replace('_', ' ').strip()
+
+    def parse_model_name(self, name):
+        """
+        Parse a model name.
+
+        The model name is expected to be of the form <model_name>_<number>,
+        where <model_name> is the name of the model and <number> is the
+        number of the model. The _ is optional. The function returns a tuple
+        (name, number), where name is the name of the model and number is the
+        number of the model. If the model name does not match the expected
+        format, the function returns (None, None).
+
+        Parameters
+        ----------
+        name : str
+            The model name to be parsed.
+
+        Returns
+        -------
+        name : str
+            The name of the model.
+        number : str
+            The number of the model.
+        """
+        match = re.match(r'([a-zA-Z0-9_-]*)_(\d*)$', name)
+        if match:
+            return match.group(1).replace('_', ' '), match.group(2)
+        try:
+            match = re.match(r'([a-zA-Z]*)(\d*)', name)
+            return match.group(1), match.group(2)
+        except Exception:
+            return None, None
+
+    def save_fit(self):
+        """
+        Save the fit results in a NXprocess group.
+
+        If the fit results have not been calculated, a message is posted
+        to the status bar and the function returns without doing
+        anything else.
+
+        The NXprocess group is built from the data, model, and
+        parameters. The model and data are stored in the group as
+        datasets, and the parameters are stored as attributes of the
+        datasets. The program name and version are stored as attributes
+        of the group. The fit statistics are stored as attributes of a
+        'statistics' dataset in the group. The fit report is stored as a
+        note in the group.
+
+        The group is then written to disk using the write_group method.
+        """
+        if self.fit is None:
+            self.fit_status.setText('Fit not available for saving')
+            return
+        self.read_parameters()
+        group = NXprocess()
+        group['model'] = self.composite_model
+        group['data'] = self.data
+        for m in self.models:
+            group[m['name']] = self.get_model(m['model'])
+            parameters = NXparameters(attrs={'model': m['class']})
+            for name in m['parameters']:
+                p = self.fit.params[name]
+                name = name.replace(m['model'].prefix, '')
+                parameters[name] = NXfield(p.value, error=p.stderr,
+                                           initial_value=p.init_value,
+                                           min=str(p.min), max=str(p.max),
+                                           vary=p.vary, expr=p.expr)
+            group[m['name']].insert(parameters)
+        group['program'] = 'lmfit'
+        group['program'].attrs['version'] = lmfit_version
+        group['title'] = 'Fit Results'
+        group['fit'] = self.get_model(fit=True)
+        fit = NXparameters()
+        fit.nfev = self.fit.result.nfev
+        fit.chisq = self.fit.result.chisqr
+        fit.redchi = self.fit.result.redchi
+        fit.message = self.fit.result.message
+        group['statistics'] = fit
+        group.note = NXnote(
+            self.fit.result.message,
+            f'Chi^2 = {self.fit.result.chisqr}\n'
+            f'Reduced Chi^2 = {self.fit.result.redchi}\n'
+            f'No. of Function Evaluations = {self.fit.result.nfev}\n'
+            f'No. of Variables = {self.fit.result.nvarys}\n'
+            f'No. of Data Points = {self.fit.result.ndata}\n'
+            f'No. of Degrees of Freedom = {self.fit.result.nfree}\n'
+            f'{self.fit.fit_report()}')
+        self.write_group(group)
+
+    def save_parameters(self):
+        """
+        Save the fit model in a NXprocess group.
+
+        The group contains the model name, the data, and a 'parameters'
+        dataset containing the values of all the model parameters. The
+        group is then written to disk using the write_group method.
+        """
+        group = NXprocess()
+        group['model'] = self.composite_model
+        group['data'] = self.data
+        for m in self.models:
+            group[m['name']] = self.get_model(m['model'])
+            parameters = NXparameters(attrs={'model': m['class']})
+            for n, p in m['parameters'].items():
+                n = n.replace(m['model'].prefix, '')
+                parameters[n] = NXfield(p.value, error=p.stderr,
+                                        initial_value=p.init_value,
+                                        min=str(p.min), max=str(p.max),
+                                        vary=p.vary, expr=p.expr)
+            group[m['name']].insert(parameters)
+        group['title'] = 'Fit Model'
+        group['model'] = self.get_model()
+        self.write_group(group)
+
+
+
 
 
 class FitDialog(NXPanel):
@@ -399,43 +701,6 @@ class FitTab(NXTab):
             _fitview = NXPlotView('Fit')
         return _fitview
 
-    def initialize_data(self, data):
-        """
-        Initialize the data to be fitted.
-
-        Parameters
-        ----------
-        data : NXdata
-            The data to be fitted.
-
-        Raises
-        ------
-        NeXusError
-            If the data is not one-dimensional.
-        """
-        if isinstance(data, NXdata):
-            if len(data.shape) > 1:
-                raise NeXusError(
-                    "Fitting only possible on one-dimensional arrays")
-            self._data = NXdata()
-            self._data['signal'] = data.nxsignal
-            self._data.nxsignal = self._data['signal']
-            if data.nxaxes[0].size == data.nxsignal.size + 1:
-                self._data['axis'] = data.nxaxes[0].centers()
-            elif data.nxaxes[0].size == data.nxsignal.size:
-                self._data['axis'] = data.nxaxes[0]
-            else:
-                raise NeXusError("Data has invalid axes")
-            self._data.nxaxes = [self._data['axis']]
-            if data.nxerrors:
-                self._data.nxerrors = data.nxerrors
-                self.poisson_errors = False
-            else:
-                self.poisson_errors = True
-            self._data['title'] = data.nxtitle
-        else:
-            raise NeXusError("Must be an NXdata group")
-
     def initialize_models(self):
         """Initialize the list of models."""
         self.all_models = all_models
@@ -528,82 +793,6 @@ class FitTab(NXTab):
             else:
                 self.save_fit_button.setVisible(False)
 
-    @property
-    def data(self):
-        """The data to be fitted."""
-        try:
-            xmin, xmax = self.get_limits()
-            axis = self._data.nxaxes[0]
-            if xmin > axis.max() or xmax < axis.min():
-                raise NeXusError('Invalid data range')
-            else:
-                return self._data[xmin:xmax]
-        except NeXusError as error:
-            report_error("Fitting data", error)
-
-    @property
-    def signal(self):
-        """
-        The data to be fitted as a one-dimensional array.
-
-        If the data is masked, the mask is removed before returning the
-        data.
-        """
-        signal = self.data['signal']
-        if signal.mask:
-            return signal.nxdata.compressed().astype(np.float64)
-        else:
-            return signal.nxdata.astype(np.float64)
-
-    @property
-    def axis(self):
-        """
-        The x-axis values of the data to be fitted.
-
-        If the data is masked, the mask is removed before returning the
-        axis values.
-        """
-        data = self.data
-        signal = data['signal'].nxdata
-        axis = data['axis'].nxdata.astype(np.float64)
-        if isinstance(signal, np.ma.MaskedArray):
-            return np.ma.masked_array(axis, mask=signal.mask).compressed()
-        else:
-            return axis
-
-    @property
-    def errors(self):
-        """
-        The data errors as a one-dimensional array.
-
-        If the data is masked, the mask is removed before returning the
-        errors. If the data has no errors, returns None.
-        """
-        data = self.data
-        if data.nxerrors:
-            errors = data.nxerrors.nxdata.astype(np.float64)
-            signal = data['signal'].nxdata
-            if isinstance(signal, np.ma.MaskedArray):
-                return np.ma.masked_array(
-                    errors, mask=signal.mask).compressed()
-            else:
-                return errors
-        else:
-            return None
-
-    @property
-    def weights(self):
-        """
-        The data weights as a one-dimensional array.
-
-        If the data is masked, the mask is removed before returning the
-        weights. If the data has no errors, returns None.
-        """
-        if self.errors is not None and np.all(self.errors):
-            return 1.0 / self.errors
-        else:
-            return None
-
     def signal_mask(self):
         """
         Return the masked data as a new NXdata group.
@@ -624,21 +813,6 @@ class FitTab(NXTab):
             return NXdata(mask_data, mask_axis)
         else:
             return None
-
-    def define_errors(self):
-        """
-        Define the errors for the fit.
-
-        If the 'fit' checkbox is checked, the errors are set to the square
-        root of the signal, but with a minimum of 1. If the checkbox is
-        not checked, the errors attribute is deleted.
-        """
-        if self.poisson_errors:
-            if self.fit_checkbox.isChecked():
-                self._data.nxerrors = np.sqrt(np.where(self._data.nxsignal < 1,
-                                                       1, self._data.nxsignal))
-            else:
-                del self._data[self._data.nxerrors.nxname]
 
     def mask_data(self):
         """
@@ -700,40 +874,6 @@ class FitTab(NXTab):
         self.clear_mask_button.setVisible(False)
 
     @property
-    def parameters(self):
-        """
-        The LMFIT Parameters object containing all the models.
-
-        This property is a read-only property that returns a Parameters
-        object that is a composite of all the parameters from all the
-        models currently in the FitTab. It is used by the FitTab to pass
-        the parameters to the LMFIT minimizer.
-
-        Returns
-        -------
-        Parameters
-            The LMFIT Parameters object that contains all the parameters
-            for all the models.
-        """
-        _parameters = Parameters()
-        for m in self.models:
-            _parameters += m['parameters']
-        return _parameters
-
-    @parameters.setter
-    def parameters(self, new_parameters):
-        for m in self.models:
-            for p in m['parameters']:
-                if p in new_parameters:
-                    m['parameters'][p].value = new_parameters[p].value
-                    m['parameters'][p].min = new_parameters[p].min
-                    m['parameters'][p].max = new_parameters[p].max
-                    m['parameters'][p].vary = new_parameters[p].vary
-                    m['parameters'][p].expr = new_parameters[p].expr
-                    m['parameters'][p].stderr = new_parameters[p].stderr
-                    m['parameters'][p].correl = new_parameters[p].correl
-
-    @property
     def method(self):
         """The minimization method selected in the FitTab."""        
         return self.fit_combo.selected
@@ -742,48 +882,6 @@ class FitTab(NXTab):
     def color(self):
         """The current color as a string."""
         return self.color_box.textbox.text()
-
-    def compressed_name(self, name):
-        """Converts a model name to a compressed name"""
-        return re.sub(r'([a-zA-Z_ ]*) [#] (\d*)$', r'\1_\2',
-                      name, count=1).replace(' ', '_')
-
-    def expanded_name(self, name):
-        """Converts a compressed name to a model name"""
-        return re.sub(r'([a-zA-Z_]*)_(\d*)$', r'\1 # \2',
-                      name, count=1).replace('_', ' ').strip()
-
-    def parse_model_name(self, name):
-        """
-        Parse a model name.
-
-        The model name is expected to be of the form <model_name>_<number>,
-        where <model_name> is the name of the model and <number> is the
-        number of the model. The _ is optional. The function returns a tuple
-        (name, number), where name is the name of the model and number is the
-        number of the model. If the model name does not match the expected
-        format, the function returns (None, None).
-
-        Parameters
-        ----------
-        name : str
-            The model name to be parsed.
-
-        Returns
-        -------
-        name : str
-            The name of the model.
-        number : str
-            The number of the model.
-        """
-        match = re.match(r'([a-zA-Z0-9_-]*)_(\d*)$', name)
-        if match:
-            return match.group(1).replace('_', ' '), match.group(2)
-        try:
-            match = re.match(r'([a-zA-Z]*)(\d*)', name)
-            return match.group(1), match.group(2)
-        except Exception:
-            return None, None
 
     def load_fit(self, group):
         """
@@ -873,10 +971,12 @@ class FitTab(NXTab):
 
         This function is used to convert parameter names in the Fit
         Dialog to their equivalent names in the saved parameters. The
-        conversion is done in the following order: 1. If the parameter
-        is in the saved parameters, it is returned unchanged. 2. If the
-        capitalized parameter is in the saved parameters, it is returned
-           with the first letter capitalized.
+        conversion is done in the following order:
+        
+        1. If the parameter is in the saved parameters, it is returned
+           unchanged.
+        2. If the capitalized parameter is in the saved parameters, it
+           is returned with the first letter capitalized.
         3. If the parameter is 'amplitude' and 'Integral' is in the
            saved parameters, 'Integral' is returned.
         4. If the parameter is 'sigma' and 'Gamma' is in the saved
@@ -1308,14 +1408,15 @@ class FitTab(NXTab):
         """
         Read the values of all parameters in the model from the GUI.
 
-        This method is called when the user clicks the 'OK' button in the
-        model dialog. It reads the values of all parameters in the model
-        from the GUI and updates the `value` attribute of each parameter
-        object. If a parameter has an expression, this method also evaluates
-        the expression using the current values of all the other parameters
-        in the model and updates the `value` attribute of the parameter
-        object with the result of the evaluation. The method returns a
-        list of all the parameter objects in the model.
+        This method is called when the user clicks the 'OK' button in
+        the model dialog. It reads the values of all parameters in the
+        model from the GUI and updates the `value` attribute of each
+        parameter object. If a parameter has an expression, this method
+        also evaluates the expression using the current values of all
+        the other parameters in the model and updates the `value`
+        attribute of the parameter object with the result of the
+        evaluation. The method returns a list of all the parameter
+        objects in the model.
 
         Returns
         -------
