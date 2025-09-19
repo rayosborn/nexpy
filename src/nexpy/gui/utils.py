@@ -922,8 +922,8 @@ def is_installed(package_name):
 
 def resource_file(filename):
     """Return the full path to a resource file within the package."""
-    return str(package_files('nexpy.gui.resources').joinpath(filename))
-
+    base_path = '/Users/rosborn/Documents/Computing/Repositories/nexpy/src'
+    return os.path.join(base_path, 'nexpy', 'gui', 'resources', filename)
 
 def resource_icon(filename):
     """Return a Qt icon from a resource file within the package."""
