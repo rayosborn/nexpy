@@ -209,7 +209,7 @@ class NXConsoleApp(JupyterQtConsoleApp):
         global _mainwindow
         _mainwindow = self.window
 
-    def init_shell(self, args):
+    def init_shell(self):
         """Initialize imports in the shell."""
         s = ("import nexusformat.nexus as nx\n"
              "from nexusformat.nexus import NXgroup, NXfield, NXattr, NXlink\n"
@@ -243,13 +243,7 @@ class NXConsoleApp(JupyterQtConsoleApp):
         except Exception:
             exec('\n'.join(default_script), self.window.user_ns)
         self.window.read_session()
-        for i, filename in enumerate(args.filenames):
-            try:
-                self.window.load_file(filename)
-            except Exception:
-                pass
-        if args.restore:
-            self.window.restore_session()
+        self.window.restore_session()
 
     def init_mode(self):
         """Configure the dark/light mode of the NeXpy widgets."""
@@ -274,22 +268,14 @@ class NXConsoleApp(JupyterQtConsoleApp):
         timer.start(200)
         self._sigint_timer = timer
 
-    def initialize(self, args):
+    def initialize(self):
         """
         Initialize the NeXpy application.
 
         This method is called by JupyterConsoleApp to initialize the
         application. It is responsible for initializing the configuration,
         logging, plugins, tree view, shell and graphical user interface.
-
-        Parameters
-        ----------
-        args : argparse.Namespace
-            The parsed command line arguments.
         """
-        if args.faulthandler:
-            import faulthandler
-            faulthandler.enable(all_threads=False)
         self.init_dir()
         self.init_settings()
         self.init_log()
@@ -297,7 +283,7 @@ class NXConsoleApp(JupyterQtConsoleApp):
         self.init_tree()
         self.init_config()
         self.init_gui()
-        self.init_shell(args)
+        self.init_shell()
         self.init_mode()
         self.init_signal()
 
@@ -316,17 +302,10 @@ class NXConsoleApp(JupyterQtConsoleApp):
         self.app.exec()
 
 
-def main(args):
-    """
-    Main entry point for NeXpy console application.
-
-    Parameters
-    ----------
-    args : list of str
-        List of command line arguments.
-    """
+def main():
+    """Main entry point for NeXpy console application."""
     app = NXConsoleApp()
-    app.initialize(args)
+    app.initialize()
     app.start()
     sys.exit(0)
 
