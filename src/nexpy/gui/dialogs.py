@@ -8,12 +8,13 @@
 import logging
 from pathlib import Path
 
+import dateparser
 import matplotlib as mpl
 import numpy as np
 from matplotlib.legend import Legend
 from matplotlib.rcsetup import validate_aspect, validate_float
 from nexusformat.nexus import (NeXusError, NXattr, NXdata, NXentry, NXfield,
-                               NXgroup, NXlink, NXroot, NXvirtualfield,
+                               NXgroup, NXlink, NXnote, NXroot, NXvirtualfield,
                                nxconsolidate, nxgetconfig, nxload, nxsetconfig)
 from nexusformat.nexus.utils import all_dtypes, map_dtype
 
@@ -4049,7 +4050,8 @@ class ViewTab(NXTab):
                 else:
                     group_widget.setLayout(self.grid)
                 layout.addWidget(group_widget)
-                self.save_button = NXPushButton('Save', self.save_scalar_fields)
+                self.save_button = NXPushButton('Save',
+                                                self.save_scalar_fields)
                 layout.addWidget(self.save_button,
                                  alignment=QtCore.Qt.AlignCenter)
             self.setLayout(layout)
@@ -4583,7 +4585,6 @@ class GroupDialog(NXDialog):
 
     def __init__(self, node, parent=None):
 
-        super().__init__(parent=parent)
         """
         Initialize the dialog to add a NeXus group.
 
@@ -4594,11 +4595,8 @@ class GroupDialog(NXDialog):
         parent : QWidget, optional
             The parent window of the dialog, by default None
         """
-
+        super().__init__(parent=parent)
         self.node = node
-
-        self.setWindowTitle("Add NeXus Data")
-
         self.set_layout(self.define_grid(), self.close_buttons())
         self.set_title("Add NeXus Group")
 
@@ -5004,7 +5002,7 @@ class AttributeDialog(NXDialog):
             return np.dtype(dtype)
 
     def accept(self):
-        """Add a new NeXus field to the tree."""
+        """Add a new NeXus attribute."""
         name = self.get_name()
         value = self.get_value()
         dtype = self.get_type()
@@ -5033,6 +5031,55 @@ class AttributeDialog(NXDialog):
                 raise NeXusError("Attribute name is empty")
         except NeXusError as error:
             report_error("Adding Attribute", error)
+
+
+class NoteDialog(NXDialog):
+
+    def __init__(self, node, parent=None):
+
+        """
+        Initialize the dialog to add a NXnote group to a NeXus node.
+
+        Parameters
+        ----------
+        node : NXobject
+            The NeXus node to which a note will be added.
+        parent : QWidget, optional
+            The parent window of the dialog, by default None
+        """
+        super().__init__(parent=parent)
+        self.node = node
+        self.fields = GridParameters()
+        fields = ['name', 'author', 'date', 'description', 'data']
+        for field in fields:
+            if field == 'name':
+                self.fields.add(field, 'note', 'Name of note')
+            elif field == 'date':
+                now = dateparser.parse('now').strftime('%Y-%m-%d %H:%M')
+                self.fields.add(field, now, 'Date')
+            else:
+                self.fields.add(field, '', field.capitalize())
+        self.set_layout(self.fields.grid(header=None),
+                        self.close_buttons(save=True))
+        self.set_title("Add Note")
+
+    def accept(self):
+        name = self.fields['name'].value
+        note = NXnote(name=name)
+        for field in ['author', 'date', 'description', 'data']:
+            note[field] =self.fields[field].value.strip()
+        try:
+            if name:
+                if name in self.node:
+                    raise NeXusError(f"Group '{name}' already exists in '"
+                                     f"{self.node.nxpath}'")
+            else:
+                raise NeXusError("Note name is empty")
+            self.node[name] = note
+            logging.info(f"'{self.node[name]}' added to '{self.node.nxpath}'")
+            super().accept()
+        except NeXusError as error:
+            report_error("Adding Note", error)
 
 
 class RenameDialog(NXDialog):

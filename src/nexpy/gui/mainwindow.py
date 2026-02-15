@@ -30,10 +30,10 @@ from .. import __version__
 from .dialogs import (AttributeDialog, CustomizeDialog, DirectoryDialog,
                       ExportDialog, FieldDialog, GroupDialog, LimitDialog,
                       LockDialog, LogDialog, ManageBackupsDialog,
-                      ManagePluginsDialog, NewDialog, PasteDialog, PlotDialog,
-                      PlotScalarDialog, ProjectionDialog, RenameDialog,
-                      ScanDialog, SettingsDialog, SignalDialog, UnlockDialog,
-                      ValidateDialog, ViewDialog)
+                      ManagePluginsDialog, NewDialog, NoteDialog, PasteDialog,
+                      PlotDialog, PlotScalarDialog, ProjectionDialog,
+                      RenameDialog, ScanDialog, SettingsDialog, SignalDialog,
+                      UnlockDialog, ValidateDialog, ViewDialog)
 from .plotview import NXPlotView
 from .pyqt import QtCore, QtGui, QtWidgets, getOpenFileName, getSaveFileName
 from .scripteditor import NXScriptWindow
@@ -522,6 +522,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.attribute_action = QtWidgets.QAction("Add Attribute", self,
                                             triggered=self.add_attribute)
         self.add_menu_action(self.data_menu, self.attribute_action)
+
+        self.add_note_action = QtWidgets.QAction("Add Note", self,
+                                                 triggered=self.add_note)
+        self.add_menu_action(self.data_menu, self.add_note_action)
 
         self.data_menu.addSeparator()
 
@@ -1737,6 +1741,20 @@ class MainWindow(QtWidgets.QMainWindow):
                 dialog.show()
         except NeXusError as error:
             report_error("Adding Attribute", error)
+
+    def add_note(self):
+        """Add a new NXnote group to the selected node."""
+        try:
+            node = self.treeview.get_node()
+            if node is not None:
+                if not node.exists():
+                    raise NeXusError(f"{node.nxfullpath} does not exist")
+                elif node.nxfilemode == 'r':
+                    raise NeXusError("NeXus file is locked")
+                dialog = NoteDialog(node, parent=self)
+                dialog.show()
+        except NeXusError as error:
+            report_error("Adding Group", error)
 
     def rename_data(self):
         """
