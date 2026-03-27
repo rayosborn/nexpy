@@ -28,13 +28,13 @@ Two GUI elements are provided for convenience:
 from pathlib import Path
 
 import numpy as np
+from nexusformat.nexus import NXdata, NXfield, NXgroup
+
 from nexpy.gui.importdialog import NXImportDialog
-from nexpy.gui.utils import in_dark_mode, parse_label, report_error
-from nexpy.gui.widgets import (NXCheckBox, NXComboBox, NXLabel, NXLineEdit,
-                               NXPushButton, NXTextEdit)
 from nexpy.gui.pyqt import QtGui
-from nexusformat.nexus import NXdata, NXentry, NXfield, NXgroup
-from nexusformat.nexus.validate import GroupValidator
+from nexpy.gui.utils import in_dark_mode, parse_label, report_error
+from nexpy.gui.widgets import (NXCheckBox, NXComboBox, NXLineEdit,
+                               NXPushButton, NXTextEdit)
 
 filetype = "Text File"
 
@@ -147,7 +147,7 @@ class ImportDialog(NXImportDialog):
         header_idx = header_idx = skip_start_index + self.skip_header
         if self.has_header and len(self.text) > header_idx:
             header_fmt = QtGui.QTextCharFormat()
-            header_fmt.setForeground(QtGui.QColor("#42A5F5"))        
+            header_fmt.setForeground(QtGui.QColor("#42A5F5"))
             header_fmt.setFontWeight(QtGui.QFont.Weight.Bold)
             cursor.movePosition(QtGui.QTextCursor.MoveOperation.Start)
             for _ in range(header_idx):

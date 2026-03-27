@@ -7,7 +7,7 @@
 # -----------------------------------------------------------------------------
 import os
 
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets # noqa: F401
 
 if QtCore.PYQT5:
     QtVersion = f"PyQt5 v{QtCore.__version__}"

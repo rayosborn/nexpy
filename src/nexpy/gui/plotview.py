@@ -4202,7 +4202,7 @@ class NXProjectionTab(QtWidgets.QWidget):
             else:
                 self.parameter_box.setText(f"{self.plotview.skew:.2f}")
         self.rotation_box.setValue(0.0)
-        
+
     def set_parameters(self):
         """
         Set the selected parameter to the value in the parameter box.
@@ -4659,7 +4659,7 @@ class NXNavigationToolbar(NavigationToolbar2QT):
     def mouse_move(self, event):
         """
         Handle a mouse move event by updating the message bar.
-        
+
         Also set the focus on the canvas.
         """
         try:

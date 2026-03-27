@@ -265,7 +265,7 @@ class NXWidgetMixin:
                      progress=False):
         """
         Create a layout for close buttons.
-        
+
         The layout contains a progress bar, buttons, and a status
         message at the bottom of the dialog window.
 
@@ -571,7 +571,7 @@ class NXWidgetMixin:
     def choose_file(self):
         """
         Open a file dialog for selecting a file.
-        
+
         The initial directory is set to the value of the line edit. If a
         file is selected, the text of the line edit is set to the
         selected file and the default directory of the line edit is set
@@ -1874,7 +1874,7 @@ class GridParameters(dict):
     def widget(self, header=True, title=None, width=None):
         """
         Return a QWidget with the parameters in a grid layout.
-        
+
         Parameters
         ----------
         header : bool, optional
@@ -1884,7 +1884,7 @@ class GridParameters(dict):
             The title to be displayed, by default None
         width : int, optional
             The width of each parameter box, by default None
-        
+
         Returns
         -------
         QWidget
@@ -2686,7 +2686,7 @@ class NXFormatter(Formatter):
         for token, style_str in style.styles.items():
             fmt = QtGui.QTextCharFormat()
             if style_str:
-                parts = style_str.split()                
+                parts = style_str.split()
                 for part in parts:
                     if part == 'bold':
                         fmt.setFontWeight(QtGui.QFont.Bold)
@@ -3100,7 +3100,7 @@ class NXComboBox(QtWidgets.QComboBox):
 
 
 class NXHierarchicalComboBox(NXComboBox):
-    
+
     def __init__(self, slot=None, items=None, default=None, parent=None):
         """
         Initialize a hierarchical dropdown menu.
@@ -3140,7 +3140,7 @@ class NXHierarchicalComboBox(NXComboBox):
         """Processes items and counts prefix occurrences."""
         self.all_items = items
         raw_prefixes = [item.split('_')[0] for item in items if '_' in item]
-        self.prefix_counts = Counter(raw_prefixes)        
+        self.prefix_counts = Counter(raw_prefixes)
         self.show_root()
 
     def show_root(self):
@@ -3795,8 +3795,8 @@ class NXDoubleSpinBox(QtWidgets.QDoubleSpinBox):
 
     def setSingleStep(self, value):
         """
-        Set the single step size of the spin box. 
-        
+        Set the single step size of the spin box.
+
         The step is determined by taking the nearest value of the array
         [1, 2, 5, 10] that is closest to the absolute value of the input
         divided by 10 to the power of the number of digits in the value.
@@ -3837,7 +3837,7 @@ class NXDoubleSpinBox(QtWidgets.QDoubleSpinBox):
     def valueFromText(self, text):
         """
         Return the value from the text in the spin box.
-        
+
         If the value is not in the range of the spin box, the range is
         extended to include the value.
         """

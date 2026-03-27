@@ -150,7 +150,7 @@ class NXConsoleApp(JupyterQtConsoleApp):
     def init_plugins(self):
         """
         Initialize plugins.
-        
+
         This method looks for plugins stored as files in the NeXpy
         directory or registered as entry points, and adds them to the
         list of plugins in the NeXpy settings file. These will be added

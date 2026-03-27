@@ -10,7 +10,8 @@ from pathlib import Path
 
 from .pyqt import QtCore, QtGui, QtWidgets, getSaveFileName
 from .utils import confirm_action, in_dark_mode
-from .widgets import NXLineEdit, NXPanel, NXPlainTextEdit, NXPushButton, NXTab, NXHighlighter
+from .widgets import (NXHighlighter, NXLineEdit, NXPanel, NXPlainTextEdit,
+                      NXPushButton, NXTab)
 
 
 class NXScrollBar(QtWidgets.QScrollBar):
@@ -104,7 +105,7 @@ class NXScriptWindow(NXPanel):
 
 
 class NXScriptEditor(NXTab):
- 
+
     def __init__(self, label, file_name=None, parent=None):
 
         """
@@ -138,7 +139,7 @@ class NXScriptEditor(NXTab):
             QtCore.Qt.ScrollBarAlwaysOff)
         self.text_layout = self.make_layout(self.number_box, self.text_box,
                                             align='justified')
-        
+
         self.text_layout.setSpacing(0)
 
         run_button = NXPushButton('Run Script', self.run_script)

@@ -115,7 +115,7 @@ class FitDialog(NXPanel):
         color : str, optional
             The color of the fit curve. The default is 'C0'.
         """
-        
+
         if plotview:
             label = plotview.label + ': ' + str(plotview.num)
         else:
@@ -650,7 +650,7 @@ class FitTab(NXTab):
 
     @property
     def method(self):
-        """The minimization method selected in the FitTab."""        
+        """The minimization method selected in the FitTab."""
         return self.fit_combo.selected
 
     @property
@@ -864,7 +864,7 @@ class FitTab(NXTab):
         visible and populates it with the valid forms of the selected
         model class. If the selected model class does not have valid
         forms, the form combo box is made invisible.
-        """  
+        """
         model_class = self.model_combo.selected
         try:
             if self.all_models[model_class].valid_forms:

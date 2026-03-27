@@ -2426,7 +2426,7 @@ class ProjectionTab(NXTab):
         """
         Uncheck the 'Minimum' checkbox if the 'Maximum' checkbox is
         checked.
-        
+
         If the 'Maximum' checkbox is checked, uncheck the 'Minimum'
         checkbox.
         """
@@ -2437,7 +2437,7 @@ class ProjectionTab(NXTab):
         """
         Uncheck the 'Maximum' checkbox if the 'Minimum' checkbox is
         checked.
-        
+
         If the 'Minimum' checkbox is checked, uncheck the 'Maximum'
         checkbox.
         """
@@ -3881,7 +3881,7 @@ class ViewDialog(NXPanel):
     def activate(self, node):
         """
         Activate a tab showing the properties of a NeXus node.
-        
+
         Parameters
         ----------
         node : NXobject
@@ -4216,14 +4216,14 @@ class ViewTableModel(QtCore.QAbstractTableModel):
     def __init__(self, data, parent=None):
         """
         Constructor for ViewTableModel
-        
+
         Parameters
         ----------
         data : array-like
             Data to be displayed in the table
         parent : QObject, optional
             Parent object
-        
+
         Notes
         -----
         The data is reshaped to a 2D array if it is not already.
@@ -4676,12 +4676,12 @@ class GroupDialog(NXDialog):
     def set_name(self, name):
         """
         Set the name of the group.
-        
+
         This is called when a value of the group box is changed. If the
         name is a base class, the leading "NX" is stripped. If it is a name
         defined by the NXDL file, the group class is updated to match.
         """
-        if (name in self.standard_groups and 
+        if (name in self.standard_groups and
                 '@type' in self.standard_groups[name]):
             self.group_box.select(self.standard_groups[name]['@type'])
         else:
@@ -4833,7 +4833,7 @@ class FieldDialog(NXDialog):
     def get_value(self):
         """
         Return the value of the text box as a python object.
-        
+
         If the value is empty, return None. If the value is a string,
         return the string. If the value is a number, return the number
         as a python object. If the value is a NumPy expression, return
@@ -5024,7 +5024,7 @@ class AttributeDialog(NXDialog):
     def get_value(self):
         """
         Return the value of the text box as a python object.
-        
+
         If the value is empty, return None. If the value is a string,
         return the string. If the value is a number, return the number
         as a python object. If the value is a NumPy expression, return
@@ -5899,7 +5899,7 @@ class ManagePluginsDialog(NXDialog):
         """
         Return a sorted list of plugins in the order of their menu
         appearance.
-        
+
         Only plugins with an order that is not 'Disabled' are included
         in the sorted list. The list is sorted by the order of the
         plugins.
@@ -5915,7 +5915,7 @@ class ManagePluginsDialog(NXDialog):
         This method updates the order of plugins, removes existing plugin
         menus, and adds them back in the updated order. It saves the
         updated plugin settings to the configuration file and closes the
-        dialog. If an error occurs, it reports the error without applying 
+        dialog. If an error occurs, it reports the error without applying
         the changes.
 
         Raises
