@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# Copyright (c) 2013-2022, NeXpy Development Team.
+# Copyright (c) 2013-2026, NeXpy Development Team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -150,7 +150,7 @@ class NXConsoleApp(JupyterQtConsoleApp):
     def init_plugins(self):
         """
         Initialize plugins.
-        
+
         This method looks for plugins stored as files in the NeXpy
         directory or registered as entry points, and adds them to the
         list of plugins in the NeXpy settings file. These will be added

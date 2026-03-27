@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# Copyright (c) 2013-2025, NeXpy Development Team.
+# Copyright (c) 2013-2026, NeXpy Development Team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -194,9 +194,9 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         if self.new_plugins:
             display_message(
-                "New plugins are available", 
+                "New plugins are available",
                 "Visit the 'Manage Plugins' menu to enable/disable them.")
-            
+
     @property
     def plotview(self):
         """Return the current plotview"""
@@ -632,7 +632,7 @@ class MainWindow(QtWidgets.QMainWindow):
             except Exception as error:
                 logging.warning(
                     f'Plugin menu "{menu}" from {package} '
-                    'could not be added to the main menu\n' + 
+                    'could not be added to the main menu\n' +
                     36*' ' + f'Error: {error}')
 
     def init_view_menu(self):
@@ -827,7 +827,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.settings.has_option('settings', 'scriptdirectory'):
             self.public_script_dir = self.settings.get('settings',
                                                        'scriptdirectory')
-        
+
         self.public_script_menu = QtWidgets.QMenu('Public Scripts', self)
         self.script_menu.addMenu(self.public_script_menu)
         self.add_script_directory(self.public_script_dir,
@@ -1053,7 +1053,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
             tree_files = [self.tree[root].nxfilename for root in self.tree]
             nxfiles = sorted([f.name for f in Path(directory).iterdir()
-                              if (f.suffix.lower() in 
+                              if (f.suffix.lower() in
                                   ('.nxs', '.nx5', '.h5', 'hdf5', 'hdf',
                                    '.cxi', 'nxspe') and
                                   str(f) not in tree_files and
@@ -1650,7 +1650,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def plot_image(self):
         """
         Plot the selected data as an image.
-        
+
         This is meant for nodes that contain RGB(A) image data.
         """
         try:
@@ -1695,7 +1695,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.panels['Validate'].activate(node)
         except NeXusError as error:
             report_error("Validating Data", error)
-        
+
     def add_group(self):
         """Add a new NeXus group to the selected node."""
         try:
@@ -1741,7 +1741,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def rename_data(self):
         """
         Rename the selected data.
-        
+
         Opens a dialog allowing the user to enter a new name for the
         selected data.
         """
@@ -1900,7 +1900,7 @@ class MainWindow(QtWidgets.QMainWindow):
         the name of the link. The method logs a message to the log file
         if successful.
         """
-        
+
         try:
             node = self.treeview.get_node()
             if isinstance(node, NXgroup) and self.copied_link is not None:
@@ -2120,7 +2120,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """
         Create an action for a new window and add it to the 'Window'
         menu.
-        
+
         Parameters
         ----------
         number : int

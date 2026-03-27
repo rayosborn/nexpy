@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -----------------------------------------------------------------------------
-# Copyright (c) 2013-2021, NeXpy Development Team.
+# Copyright (c) 2013-2026, NeXpy Development Team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -15,13 +15,13 @@ import nexpy
 
 def main():
     try:
-        from qtpy import QtWidgets
+        from qtpy import QtWidgets # noqa: F401
     except ImportError:
         sys.exit(
             "No Qt binding found. Reinstall with a Qt extra, e.g.:\n"
             "  pip install nexpy[qt]\n\n"
             "  uv tool install nexpy[qt]\n"
-            "Available Qt bindings: [qt], [pyqt5], [pyqt6], [pyside2], [pyside6]"
+            "Available bindings: [qt], [pyqt5], [pyqt6], [pyside2], [pyside6]"
         )
 
     parser = argparse.ArgumentParser(description="Launch NeXpy")

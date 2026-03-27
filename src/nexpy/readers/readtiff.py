@@ -9,8 +9,6 @@
 """
 Module to read in a TIFF file using 'tifffile' and convert it to NeXus.
 """
-from pathlib import Path
-
 import numpy as np
 from nexusformat.nexus import NeXusError, NXdata, NXfield
 

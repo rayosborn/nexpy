@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# Copyright (c) 2013-2021, NeXpy Development Team.
+# Copyright (c) 2014-2026, NeXpy Development Team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -12,11 +12,11 @@ Module to read in a folder of image files and convert them to NeXus.
 import re
 
 import numpy as np
+from nexusformat.nexus import NeXusError, NXcollection, NXdata, NXfield, NXnote
+from qtpy import QtCore, QtWidgets
+
 from nexpy.gui.importdialog import NXImportDialog
 from nexpy.gui.widgets import NXComboBox, NXLabel, NXLineEdit
-from nexusformat.nexus import (NeXusError, NXcollection, NXdata, NXentry,
-                               NXfield, NXnote)
-from qtpy import QtCore, QtWidgets
 
 filetype = "Image Stack"
 maximum = 0.0

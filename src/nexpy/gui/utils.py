@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# Copyright (c) 2013-2025, NeXpy Development Team.
+# Copyright (c) 2016-2026, NeXpy Development Team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -460,7 +460,7 @@ def convertHTML(text, switch=False):
 def get_name(filename, entries=None):
     """
     Return a valid Python object name based on the filename stem.
-    
+
     If the filename stem already exists in the entries dictionary,
     append a number to the name.
 
@@ -795,7 +795,7 @@ def load_plugin(plugin, order=None):
         if entry is None:
             raise PackageNotFoundError(f"'{plugin}'")
         package = entry.dist.name
-        logging.disable(logging.INFO) 
+        logging.disable(logging.INFO)
         try:
             menu, actions = entry.load()()
         finally:
@@ -848,7 +848,7 @@ def load_readers():
             readers[entry.name] = entry.load()
         except Exception:
             pass
-            
+
     return readers
 
 

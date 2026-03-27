@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# Copyright (c) 2013-2022, NeXpy Development Team.
+# Copyright (c) 2015-2026, NeXpy Development Team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -7,7 +7,7 @@
 # -----------------------------------------------------------------------------
 import os
 
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets # noqa: F401
 
 if QtCore.PYQT5:
     QtVersion = f"PyQt5 v{QtCore.__version__}"
