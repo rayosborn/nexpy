@@ -1048,7 +1048,8 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             directory = str(self.default_directory)
             directory = QtWidgets.QFileDialog.getExistingDirectory(
-                self, 'Choose Directory', directory)
+                self, 'Choose Directory', directory,
+                QtWidgets.QFileDialog.ShowDirsOnly)
             if directory is None or not Path(directory).exists():
                 return
             tree_files = [self.tree[root].nxfilename for root in self.tree]

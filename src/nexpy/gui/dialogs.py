@@ -4486,7 +4486,8 @@ class ValidateTab(NXTab):
         """
         dirname = str(self.definitions)
         dirname = QtWidgets.QFileDialog.getExistingDirectory(
-            self, 'Choose Definitions Directory', dirname)
+            self, 'Choose Definitions Directory', dirname,
+            QtWidgets.QFileDialog.ShowDirsOnly)
         dirname = Path(dirname)
         if dirname.exists():
             if dirname.joinpath('base_classes').exists():
