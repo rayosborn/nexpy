@@ -27,6 +27,7 @@ class ImportDialog(NXImportDialog):
         super().__init__(parent=parent)
         self.set_layout(self.filebox(), self.selection_layout())
         self.set_title("Import " + str(filetype))
+        self.filter = "NumPy Files (*.npy *.npz)"
 
     def choose_file(self):
         super().choose_file()

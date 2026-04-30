@@ -42,6 +42,7 @@ class NXImportDialog(NXDialog):
         self.selection_buttons = self.radiobuttons(
             ('tree', "Save to Tree", True),
             ('selection', "Save to Selection", False))
+        self.filter = None
 
     def selection_layout(self, lock_class=False):
         self.imported_name_box = NXLineEdit()
@@ -67,14 +68,12 @@ class NXImportDialog(NXDialog):
                                 vertical=True)
 
     def choose_file(self):
-        super().choose_file()
+        super().choose_file(filter=self.filter)
         try:
             self.import_file = self.get_filename()
             if not self.import_file:
-                raise NeXusError("No file specified")
-            elif not Path(self.import_file).exists():
-                raise NeXusError(f"File {self.import_file} does not exist")
-            self.default_directory = Path(self.import_file).parent
+                raise NeXusError("Invalid file")
+            self.default_directory = self.import_file.parent
         except NeXusError:
             self.import_file = None
         else:

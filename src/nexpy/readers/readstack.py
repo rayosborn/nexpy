@@ -265,7 +265,7 @@ class ImportDialog(NXImportDialog):
         v.maximum = maximum
 
         if im.getclassname() == 'CbfImage':
-            note = NXnote(type='text/plain', file_name=self.import_file)
+            note = NXnote(type='text/plain', file_name=str(self.import_file))
             note.data = im.header.pop('_array_data.header_contents', '')
             note.description = im.header.pop(
                 '_array_data.header_convention', '')

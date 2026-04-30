@@ -25,6 +25,7 @@ class ImportDialog(NXImportDialog):
         self.set_layout(self.filebox(), self.selection_layout(lock_class=True))
         self.set_title("Import "+str(filetype))
         self.import_class = "NXdata"
+        self.filter = "TIFF Files (*.tif *.tiff)"
 
     def get_data(self):
         try:

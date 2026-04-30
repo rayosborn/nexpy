@@ -25,7 +25,6 @@ Two GUI elements are provided for convenience:
                             the dialog. This should be placed at the
                             bottom of all import dialogs.
 """
-from pathlib import Path
 
 import numpy as np
 from nexusformat.nexus import NXdata, NXfield, NXgroup
@@ -80,7 +79,7 @@ class ImportDialog(NXImportDialog):
         self.customizebutton = NXPushButton('Customize Fields',
                                             self.customize_data)
 
-        self.set_layout(self.filebox(slot=self.read_file), self.textbox,
+        self.set_layout(self.filebox(), self.textbox,
                         self.make_layout('Title Row', self.titlebox,
                                          'stretch',
                                          'Skipped Rows', self.skipbox,
@@ -93,14 +92,12 @@ class ImportDialog(NXImportDialog):
                         spacing=5)
         self.set_title("Import "+str(filetype))
         self.data = None
+        self.filter="Text Files (*.txt *.dat *.csv)"
 
-    def read_file(self):
+    def choose_file(self, filter=None):
         """Read the text file"""
-        if self.get_filename() == '':
-            self.choose_file()
-        file_path = Path(self.get_filename())
-        if file_path.exists():
-            self.import_file = file_path
+        super().choose_file()
+        if self.import_file:
             with open(self.import_file, 'r') as f:
                 text = f.read()
                 self.text = []
