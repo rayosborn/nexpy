@@ -525,11 +525,18 @@ class NXWidgetMixin:
         filebox.addWidget(self.filename)
         return filebox
 
-    def directorybox(self, text="Choose Directory", slot=None, default=True,
-                     suggestion=None):
+    def directorybox(self, text="Choose Directory", slot=None,
+                     default=None, suggestion=None):
         """
         Create a horizontal box layout with a button and a line edit for
         selecting a directory.
+
+        Note
+        ----
+        If a suggestion is provided, a call to get_directory() will
+        return the suggested directory unless the suggestion is deleted
+        first. Only provide a suggestion if it is very likely to be the
+        correct choice.
 
         Parameters
         ----------
@@ -539,14 +546,12 @@ class NXWidgetMixin:
         slot : callable, optional
             A function to be called when the button is clicked. If None,
             the function defaults to self.choose_directory.
-        default : bool, optional
-            If True, set the default directory for the line edit.
-            Otherwise, leave it blank. Default is True.
-        suggestion : str, optional
-            A suggestion for the default directory. If given, it will be
-            used to set the default directory. Otherwise, the default
-            directory will be determined by the value of the
-            'homedirectory' attribute of the nxgetconfig dictionary.
+        default : str or Path, optional
+            The default directory to use for open/save dialogs. If None,
+            the current default directory is used. Default is None.
+        suggestion : str or Path, optional
+            A suggested directory to display initially. If None, the
+            text box is left blank. Default is None.
 
         Returns
         -------
@@ -560,15 +565,16 @@ class NXWidgetMixin:
             self.directorybutton = NXPushButton(text, self.choose_directory)
         self.directoryname = NXLineEdit(parent=self)
         self.directoryname.setMinimumWidth(300)
-        default_directory = self.get_default_directory(suggestion=suggestion)
-        if default and default_directory:
-            self.directoryname.setText(default_directory)
+        if suggestion:
+            self.directoryname.setText(str(Path(suggestion).resolve()))
+        if default:
+            self.default_directory = default
         directorybox = QtWidgets.QHBoxLayout()
         directorybox.addWidget(self.directorybutton)
         directorybox.addWidget(self.directoryname)
         return directorybox
 
-    def choose_file(self):
+    def choose_file(self, filter=None):
         """
         Open a file dialog for selecting a file.
 
@@ -577,48 +583,76 @@ class NXWidgetMixin:
         selected file and the default directory of the line edit is set
         to the parent directory of the selected file.
         """
-        dirname = self.get_default_directory(self.filename.text())
-        filename = Path(getOpenFileName(self, 'Open File', dirname))
-        if filename.is_file():
-            self.filename.setText(str(filename))
-            self.set_default_directory(filename.parent)
+        filepath = Path(self.filename.text())
+        if filepath.is_file():
+            self.filename.setText(str(filepath.resolve()))
+            return
+        elif filepath.is_dir() and self.filename.text():
+            dirpath = filepath
+        else:
+            dirpath = self.get_default_directory()
+        if filter:
+            filter = filter + ";;All files (*)"
+        filepath = Path(getOpenFileName(self, 'Open File', dirpath,
+                                        filter=filter))
+        if filepath.is_file():
+            self.filename.setText(str(filepath.resolve()))
+            self.set_default_directory(filepath.parent)
 
     def get_filename(self):
         """Return the selected file."""
-        return self.filename.text()
+        filepath = Path(self.filename.text())
+        if filepath.is_file():
+            return filepath.resolve()
+        else:
+            return None
 
     def choose_directory(self):
         """Open a file dialog and sets the text box to the path."""
-        dirname = str(self.get_default_directory())
-        dirname = QtWidgets.QFileDialog.getExistingDirectory(
-            self, 'Choose Directory', dirname)
-        if Path(dirname).exists():  # avoids problems if <Cancel> was selected
-            self.directoryname.setText(str(dirname))
-            self.set_default_directory(dirname)
+        dirpath = Path(self.directoryname.text())
+        if dirpath.is_dir() and self.directoryname.text():
+            self.directoryname.setText(str(dirpath.resolve()))
+            return
+        else:
+            default_directory = str(self.get_default_directory())
+        dirpath = Path(QtWidgets.QFileDialog.getExistingDirectory(
+            self, 'Choose Directory', default_directory,
+            QtWidgets.QFileDialog.Option.ShowDirsOnly))
+        if dirpath.is_dir():
+            self.directoryname.setText(str(dirpath.resolve()))
+            self.set_default_directory(dirpath)
 
     def get_directory(self):
         """Return the selected directory."""
-        return self.directoryname.text()
+        dirpath = Path(self.directoryname.text())
+        if dirpath.is_dir() and self.directoryname.text():
+            return dirpath.resolve()
+        else:
+            return None
 
     def get_default_directory(self, suggestion=None):
         """Return the default directory for open/save dialogs."""
-        if suggestion is None or not Path(suggestion).exists():
-            suggestion = self.default_directory
-        suggestion = Path(suggestion)
-        if suggestion.exists():
-            if not suggestion.is_dir:
-                suggestion = suggestion.parent
-        suggestion = suggestion.resolve()
-        return suggestion
+        if suggestion and Path(suggestion).exists():
+            default_directory = Path(suggestion).resolve()
+        else:
+            default_directory = Path(self.default_directory).resolve()
+        if default_directory.is_file():
+            default_directory = default_directory.parent
+        return default_directory
 
-    def set_default_directory(self, suggestion):
+    def set_default_directory(self, default_directory):
         """Define the default directory to use for open/save dialogs."""
-        suggestion = Path(suggestion)
-        if suggestion.exists():
-            if not suggestion.is_dir():
-                suggestion = suggestion.parent
-            self.default_directory = suggestion
-            self.mainwindow.default_directory = self.default_directory
+        if default_directory in [None, '']:
+            return
+        default_directory = Path(default_directory)
+        if default_directory.is_file():
+            default_directory = default_directory.parent
+        elif default_directory.is_dir():
+            default_directory = default_directory.resolve()
+        else:
+            return
+        self.default_directory = default_directory
+        self.mainwindow.default_directory = self.default_directory
 
     def get_filesindirectory(self, prefix='', extension='.*', directory=None):
         """
