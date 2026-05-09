@@ -886,15 +886,15 @@ class NXPlotView(QtWidgets.QDialog):
         _signal = _data.nxsignal
         if self.ndim > 2:
             idx = [np.s_[0] if s == 1 else np.s_[:] for s in _signal.shape]
-            for i in range(len(idx)):
-                if idx.count(slice(None, None, None)) > 2:
-                    try:
-                        if self.axes[i].shape[0] == _signal.shape[i]+1:
-                            idx[i] = self.axes[i].centers().index(0.0)
+            axis_idx = 0
+            for i, data_idx in enumerate(idx):
+                if data_idx != 0:
+                    if data_idx == np.s_[:] and axis_idx < len(self.axes)- 2:
+                        if self.axes[axis_idx].shape[0] == _signal.shape[i]+1:
+                            idx[i] = self.axes[axis_idx].centers().index(0.0)
                         else:
-                            idx[i] = self.axes[i].index(0.0)
-                    except Exception:
-                        idx[i] = 0
+                            idx[i] = self.axes[axis_idx].index(0.0)
+                    axis_idx += 1
             if self.weighted:
                 signal = _data[tuple(idx)].weighted_data().nxsignal[()]
             else:
@@ -1734,11 +1734,11 @@ class NXPlotView(QtWidgets.QDialog):
         """
         Return the aspect ratio of the plot.
 
-        If the plot is a 2D image and the aspect ratio is 'equal', then the
-        aspect ratio is calculated from the scaling factors of the x and y axes.
-        If the 'Set Aspect' button is checked, then the aspect ratio is returned
-        as a numerical value. Otherwise, the aspect ratio is returned as
-        'auto' or 'equal'.
+        If the plot is a 2D image and the aspect ratio is 'equal', then
+        the aspect ratio is calculated from the scaling factors of the x
+        and y axes. If the 'Set Aspect' button is checked, then the
+        aspect ratio is returned as a numerical value. Otherwise, the
+        aspect ratio is returned as 'auto' or 'equal'.
         """
         if self.image and self._aspect == 'equal':
             self.otab._actions['set_aspect'].setChecked(True)

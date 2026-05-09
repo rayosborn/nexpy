@@ -1994,7 +1994,7 @@ class GridParameters(dict):
 
     def refine_parameters(self, residuals, **opts):
         """
-        Refine the parameters in the GridParameterSet using a least-squares fit.
+        Refine the parameters in the GridParameter using a least-squares fit.
 
         Parameters
         ----------
