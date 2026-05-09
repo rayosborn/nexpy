@@ -433,9 +433,10 @@ class PlotDialog(NXDialog):
                 else:
                     kwargs['marker'] = 'o'
                 kwargs['over'] = self.checkbox['over'].isChecked()
-            data = NXdata(self.signal, self.get_axes(),
+            data = NXdata(self.signal, self.get_axes(), name=self.group.nxname,
                           title=self.signal_path)
             data.attrs['signal_path'] = self.signal_path
+            data.nxgroup = self.group.nxgroup
             data.plot(**kwargs)
             super().accept()
         except NeXusError as error:
@@ -603,11 +604,12 @@ class PlotScalarDialog(NXDialog):
         """
         Return the scan axis for the selected files.
 
-        If the scan variable is not given, return an axis with name 'file_index'
-        and long_name 'File Index' with values from 1 to the number of files
-        selected.  If the scan variable is given, return an axis with the
-        same dtype, name, and attributes (long_name and units) as the
-        variable, with the values set to the values given in the files.
+        If the scan variable is not given, return an axis with name
+        'file_index' and long_name 'File Index' with values from 1 to
+        the number of files selected.  If the scan variable is given,
+        return an axis with the same dtype, name, and attributes
+        (long_name and units) as the variable, with the values set to
+        the values given in the files.
 
         Raises
         ------
@@ -4052,7 +4054,8 @@ class ViewTab(NXTab):
                 else:
                     group_widget.setLayout(self.grid)
                 layout.addWidget(group_widget)
-                self.save_button = NXPushButton('Save', self.save_scalar_fields)
+                self.save_button = NXPushButton('Save',
+                                                self.save_scalar_fields)
                 layout.addWidget(self.save_button,
                                  alignment=QtCore.Qt.AlignCenter)
             self.setLayout(layout)
