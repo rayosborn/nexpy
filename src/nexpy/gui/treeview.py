@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# Copyright (c) 2013-2025, NeXpy Development Team.
+# Copyright (c) 2013-2026, NeXpy Development Team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -12,8 +12,7 @@ from nexusformat.nexus import (NeXusError, NXdata, NXentry, NXfield, NXgroup,
                                NXlink, NXroot, nxload)
 
 from .pyqt import QtCore, QtGui, QtWidgets
-from .utils import (display_message, get_name, modification_time, report_error,
-                    resource_icon)
+from .utils import (display_message, get_name, modification_time, report_error)
 from .widgets import NXSortModel
 
 
@@ -343,13 +342,6 @@ class NXTreeItem(QtGui.QStandardItem):
         self.root = node.nxroot
         self.tree = self.root.nxgroup
         self.path = self.root.nxname + node.nxpath
-        if isinstance(node, NXlink):
-            self._linked = resource_icon('link-icon.png')
-        elif isinstance(node, NXroot):
-            self._locked = resource_icon('lock-icon.png')
-            self._locked_modified = resource_icon('lock-red-icon.png')
-            self._unlocked = resource_icon('unlock-icon.png')
-            self._unlocked_modified = resource_icon('unlock-red-icon.png')
         super().__init__(node.nxname)
 
     @property
@@ -375,12 +367,24 @@ class NXTreeItem(QtGui.QStandardItem):
 
         Returns
         -------
-        str or QIcon or None
-            The name of the tree item for the DisplayRole and EditRole,
-            a tooltip for the ToolTipRole, and a QIcon for the
-            DecorationRole or None if the node is not a root or link.
+        str or None
+            The name of the tree item (with emoji prefix for root and link
+            nodes) for DisplayRole, the plain name for EditRole, and a
+            tooltip string for ToolTipRole.
         """
-        if role == QtCore.Qt.DisplayRole or role == QtCore.Qt.EditRole:
+        if role == QtCore.Qt.DisplayRole:
+            try:
+                node = self.node
+                if isinstance(node, NXroot):
+                    prefix = '🔒' if node.nxfilemode == 'r' else None
+                elif isinstance(node, NXlink):
+                    prefix = '🔗'
+                else:
+                    prefix = None
+            except Exception:
+                prefix = None
+            return f'{prefix} {self.name}' if prefix else self.name
+        elif role == QtCore.Qt.EditRole:
             return self.name
         elif role == QtCore.Qt.ToolTipRole:
             try:
@@ -391,25 +395,6 @@ class NXTreeItem(QtGui.QStandardItem):
                     return tree
             except Exception:
                 return ''
-        elif role == QtCore.Qt.DecorationRole:
-            try:
-                if isinstance(self.node, NXroot):
-                    if self.node.nxfilemode == 'r':
-                        if self.node._file_modified:
-                            return self._locked_modified
-                        else:
-                            return self._locked
-                    elif self.node.nxfilemode == 'rw':
-                        if self.node._file_modified:
-                            return self._unlocked_modified
-                        else:
-                            return self._unlocked
-                elif isinstance(self.node, NXlink):
-                    return self._linked
-                else:
-                    return None
-            except Exception:
-                return None
 
     def children(self):
         """Return a list of child items."""
