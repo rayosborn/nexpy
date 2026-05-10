@@ -31,6 +31,7 @@ from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from threading import Thread
 
+import darkdetect
 import dateparser
 import numpy as np
 from ansi2html import Ansi2HTMLConverter
@@ -1034,10 +1035,7 @@ def in_dark_mode():
         True if the application is in dark mode, False otherwise.
     """
     try:
-        mainwindow = get_mainwindow()
-        app = mainwindow.app.app
-        return (app.palette().window().color().value() <
-                app.palette().windowText().color().value())
+        return darkdetect.isDark()
     except Exception:
         return False
 
