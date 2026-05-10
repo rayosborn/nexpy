@@ -376,7 +376,12 @@ class NXTreeItem(QtGui.QStandardItem):
             try:
                 node = self.node
                 if isinstance(node, NXroot):
-                    prefix = '🔒' if node.nxfilemode == 'r' else None
+                    if node._file_modified:
+                        prefix = '🚫'
+                    elif node.nxfilemode == 'r':
+                        prefix = '🔒'
+                    else:
+                        prefix = None
                 elif isinstance(node, NXlink):
                     prefix = '🔗'
                 else:
