@@ -903,6 +903,18 @@ class NXWidgetMixin:
             f"{self.root_box.selected}/{self.entry_box.selected}/"
             f"{self.data_box.selected}"]
 
+    def input_text(self, title=None, request=None):
+        """Display a text input dialog"""
+        if title is None:
+            title = 'Input text'
+        if request is None:
+            request = 'Enter text:'
+        text, ok = QtWidgets.QInputDialog.getText(self, title, request)
+        if ok:
+            return text
+        else:
+            return None
+
     def read_parameter(self, root, path):
         """
         Read a parameter from the given root and path.
