@@ -406,7 +406,7 @@ class NXTreeItem(QtGui.QStandardItem):
                 if isinstance(node, (NXentry, NXsubentry)):
                     return QtGui.QColor('#3D85C6')
                 elif isinstance(node, NXdata):
-                    return QtGui.QColor('#E06666')
+                    return QtGui.QColor('#10B981')
             except Exception:
                 pass
         elif role == QtCore.Qt.ToolTipRole:
