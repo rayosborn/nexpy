@@ -1058,10 +1058,13 @@ def define_mode():
         mainwindow.console.set_default_style('linux')
         mainwindow.shell.colors = 'linux'
         mainwindow.statusBar().setPalette(mainwindow.app.app.palette())
+        mainwindow.treeview.setStyleSheet(
+            'QTreeView { background-color: #121212; }')
     else:
         mainwindow.console.set_default_style()
         mainwindow.shell.colors = 'lightbg'
         mainwindow.statusBar().setPalette(mainwindow.app.app.palette())
+        mainwindow.treeview.setStyleSheet('')
 
     for dialog in mainwindow.dialogs:
         if dialog.windowTitle() == 'Script Editor':

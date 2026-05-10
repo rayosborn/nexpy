@@ -9,7 +9,7 @@
 from pathlib import Path
 
 from nexusformat.nexus import (NeXusError, NXdata, NXentry, NXfield, NXgroup,
-                               NXlink, NXroot, nxload)
+                               NXlink, NXroot, NXsubentry, nxload)
 
 from .pyqt import QtCore, QtGui, QtWidgets
 from .utils import (display_message, get_name, modification_time, report_error)
@@ -386,6 +386,24 @@ class NXTreeItem(QtGui.QStandardItem):
             return f'{prefix} {self.name}' if prefix else self.name
         elif role == QtCore.Qt.EditRole:
             return self.name
+        elif role == QtCore.Qt.FontRole:
+            try:
+                if (isinstance(self.node, (NXroot, NXentry))
+                    and not isinstance(self.node, NXsubentry)):
+                    font = QtGui.QFont()
+                    font.setBold(True)
+                    return font
+            except Exception:
+                pass
+        elif role == QtCore.Qt.ForegroundRole:
+            try:
+                node = self.node
+                if isinstance(node, (NXentry, NXsubentry)):
+                    return QtGui.QColor('#3D85C6')
+                elif isinstance(node, NXdata):
+                    return QtGui.QColor('#E06666')
+            except Exception:
+                pass
         elif role == QtCore.Qt.ToolTipRole:
             try:
                 tree = self.node.short_tree
@@ -624,7 +642,7 @@ class NXTreeView(QtWidgets.QTreeView):
         if item and item.node:
             group = item.node
             for name in [n for n in group if isinstance(group[n], NXgroup)]:
-                _entries = group[name].entries
+                _ = group[name].entries
 
     def addMenu(self, action):
         """Add an action to the menu."""
