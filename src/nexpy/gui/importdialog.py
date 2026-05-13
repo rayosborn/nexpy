@@ -136,7 +136,7 @@ class NXImportDialog(NXDialog):
 
         This usually needs to be subclassed in each dialog.
         """
-        self.accepted = True
+        self.was_accepted = True
         self.mainwindow.import_data()
         super().accept()
 

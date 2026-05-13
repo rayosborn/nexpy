@@ -109,7 +109,7 @@ class NXWidgetMixin:
         self.thread = None
         self.bold_font = QtGui.QFont()
         self.bold_font.setBold(True)
-        self.accepted = False
+        self.was_accepted = False
 
     def set_layout(self, *items, **opts):
         """
@@ -1344,7 +1344,7 @@ class NXDialog(NXWidgetMixin, QtWidgets.QDialog):
 
     def done(self, result):
         """Close the dialog and clean up."""
-        self.accepted = (result == QtWidgets.QDialog.Accepted)
+        self.was_accepted = (result == QtWidgets.QDialog.Accepted)
         self.cleanup()
         super().done(result)
 
