@@ -754,7 +754,8 @@ class NXWidgetMixin:
         """The selected root entry."""
         return self.tree[self.root_box.currentText()]
 
-    def select_entry(self, slot=None, text='Select Entry'):
+    def select_entry(self, slot=None, text='Select Entry',
+                     subentry=False, subentries_callback=None):
         """
         Create a dropdown box from a list of the root entries and a list
         of the entries within the selected root entry in the NeXus tree.
@@ -767,6 +768,16 @@ class NXWidgetMixin:
         text : str, optional
             The text to be displayed on the button to change the entry.
             Default is 'Select Entry'.
+        subentry : bool, optional
+            If True, add a subentry selector that shows and hides
+            dynamically based on whether the selected entry contains
+            NXsubentry groups. Default is False.
+        subentries_callback : callable, optional
+            Called with no arguments; should return a list of extra
+            subentry names to include alongside any NXsubentry groups
+            found in the selected entry (e.g. parent-defined subentries
+            not yet created in the file). Only used when subentry=True.
+            Default is None.
 
         Returns
         -------
@@ -792,9 +803,20 @@ class NXWidgetMixin:
         except Exception:
             pass
         self.data_box = None
+        self.subentry_box = None
         layout.addStretch()
         layout.addWidget(self.root_box)
         layout.addWidget(self.entry_box)
+        if subentry:
+            self._subentries_callback = subentries_callback
+            self._subentry_label = NXLabel('Subentry:')
+            self._subentry_label.setVisible(False)
+            self.subentry_box = NXComboBox()
+            self.subentry_box.setVisible(False)
+            layout.addWidget(self._subentry_label)
+            layout.addWidget(self.subentry_box)
+            self.entry_box.activated.connect(self._update_subentry_box)
+            self._update_subentry_box()
         if slot:
             layout.addWidget(NXPushButton(text, slot))
         layout.addStretch()
@@ -813,11 +835,48 @@ class NXWidgetMixin:
         self.entry_box.add(*sorted(self.tree[self.root_box.selected].entries))
         if self.data_box:
             self.switch_entry()
+        if self.subentry_box is not None:
+            self._update_subentry_box()
+
+    def _update_subentry_box(self):
+        """Populate subentry_box from the current entry's NXsubentry groups.
+
+        Shows the label and box when subentries are available; hides
+        them when the selected entry has no subentries.
+        """
+        try:
+            subentries = [s.nxname for s in self.entry.NXsubentry]
+        except Exception:
+            subentries = []
+        if self._subentries_callback:
+            try:
+                for name in self._subentries_callback():
+                    if name not in subentries:
+                        subentries.append(name)
+            except Exception:
+                pass
+        self.subentry_box.blockSignals(True)
+        self.subentry_box.clear()
+        if subentries:
+            self.subentry_box.addItems([''] + subentries)
+            self._subentry_label.setVisible(True)
+            self.subentry_box.setVisible(True)
+        else:
+            self._subentry_label.setVisible(False)
+            self.subentry_box.setVisible(False)
+        self.subentry_box.blockSignals(False)
 
     @property
     def entry(self):
         """The selected entry."""
         return self.tree[f"{self.root_box.selected}/{self.entry_box.selected}"]
+
+    @property
+    def subentry(self):
+        """The selected subentry name, or '' for the top-level entry."""
+        if self.subentry_box is not None and self.subentry_box.isVisible():
+            return self.subentry_box.selected
+        return ''
 
     def select_data(self, slot=None, text='Select Data'):
         """
