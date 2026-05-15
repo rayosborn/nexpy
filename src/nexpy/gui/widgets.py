@@ -2591,8 +2591,9 @@ class NXTextEdit(QtWidgets.QTextEdit):
             self.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
         elif align == 'right':
             self.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        self.setStyleSheet(
-            "QTextEdit { background-color: white; padding: 2px; }")
+        self._apply_stylesheet()
+        QtWidgets.QApplication.instance().paletteChanged.connect(
+            self._apply_stylesheet)
         if autosize:
             self.setLineWrapMode(QtWidgets.QTextEdit.WidgetWidth)
             self.document().setDocumentMargin(0)
@@ -2605,6 +2606,13 @@ class NXTextEdit(QtWidgets.QTextEdit):
         self.selectionChanged.connect(self.highlighter.setSearchText)
         if slot:
             self.textChanged.connect(slot)
+
+    def _apply_stylesheet(self):
+        if in_dark_mode():
+            self.setStyleSheet("QTextEdit { padding: 2px; }")
+        else:
+            self.setStyleSheet(
+                "QTextEdit { background-color: white; padding: 2px; }")
 
     def update_minimum_height(self):
         """Calculate height for one line of text including all margins"""
