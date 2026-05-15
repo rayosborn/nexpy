@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# Copyright (c) 2014-2025, NeXpy Development Team.
+# Copyright (c) 2014-2026, NeXpy Development Team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
@@ -16,7 +16,7 @@ from nexusformat.nexus.tree import (NeXusError, NXdata, NXentry, NXfield,
                                     NXlog, NXroot)
 
 from nexpy.gui.importdialog import NXImportDialog
-from nexpy.gui.pyqt import QtWidgets, getOpenFileName
+from nexpy.gui.pyqt import QtWidgets
 from nexpy.gui.widgets import NXLabel, NXLineEdit
 
 filetype = "SPEC File"
@@ -51,6 +51,7 @@ class ImportDialog(NXImportDialog):
         self.setLayout(self.layout)
 
         self.setWindowTitle("Import "+str(filetype))
+        self.filter="SPEC Files (*.spec *.spe *.dat *.s1 *.s2)"
 
     def scanbox(self):
         """Create widgets for specifying scan range to import."""
@@ -72,12 +73,9 @@ class ImportDialog(NXImportDialog):
     def choose_file(self):
         """Opens file dialog, set file text box to the chosen path."""
         from spec2nexus.spec import SpecDataFile
-        dirname = self.get_default_directory(self.filename.text())
-        filename = getOpenFileName(self, 'Open file', dirname)
-        if Path(filename).exists():
-            self.filename.setText(str(filename))
-            self.spec = SpecDataFile(self.get_filename())
-            self.set_default_directory(Path(filename).parent)
+        super().choose_file()
+        if self.import_file:
+            self.spec = SpecDataFile(str(self.import_file))
             all_scans = self.get_scan_numbers()
             scan_min = all_scans[0]
             self.scanmin.setText(str(scan_min))
@@ -87,8 +85,6 @@ class ImportDialog(NXImportDialog):
     def get_data(self):
         """Read the data and return :class:`NXroot` or :class:`NXentry`."""
         self.import_file = self.get_filename()
-        if not Path(self.import_file).exists():
-            return None
         if self.spec is None:
             return None
         scan_min = int(self.scanmin.text())

@@ -1048,7 +1048,8 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             directory = str(self.default_directory)
             directory = QtWidgets.QFileDialog.getExistingDirectory(
-                self, 'Choose Directory', directory)
+                self, 'Choose Directory', directory,
+                QtWidgets.QFileDialog.ShowDirsOnly)
             if directory is None or not Path(directory).exists():
                 return
             tree_files = [self.tree[root].nxfilename for root in self.tree]
@@ -1283,7 +1284,7 @@ class MainWindow(QtWidgets.QMainWindow):
         and selects the new node in the treeview.
         """
         try:
-            if self.import_dialog.accepted:
+            if self.import_dialog.was_accepted:
                 imported_data = self.import_dialog.get_data()
                 if self.import_dialog.import_name is None:
                     name = self.import_dialog.import_file.stem
