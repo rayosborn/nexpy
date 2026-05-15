@@ -192,6 +192,7 @@ class MainWindow(QtWidgets.QMainWindow):
         when the application was last run. If so, a message is displayed
         to the user to manage the plugins.
         """
+        define_mode()
         if self.new_plugins:
             display_message(
                 "New plugins are available",

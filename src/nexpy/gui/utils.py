@@ -1023,11 +1023,7 @@ def in_dark_mode():
     """
     Return True if the application is in dark mode, False otherwise.
 
-    This works by comparing the value of the window and windowText
-    colors in the application's palette. If the window color is darker
-    than the windowText color, the application is in dark mode.
-    Otherwise, it is in light mode. If the application is not properly
-    initialized, this function will return False.
+    Uses the OS-level dark mode setting detected via darkdetect.
 
     Returns
     -------
@@ -1057,7 +1053,7 @@ def define_mode():
         mainwindow.shell.colors = 'linux'
         mainwindow.statusBar().setPalette(mainwindow.app.app.palette())
         mainwindow.treeview.setStyleSheet(
-            'QTreeView { background-color: #121212; }')
+            'QTreeView { background-color: #121212; color: white; }')
     else:
         mainwindow.console.set_default_style()
         mainwindow.shell.colors = 'lightbg'
@@ -1074,8 +1070,10 @@ def define_mode():
     for plotview in mainwindow.plotviews.values():
         if in_dark_mode():
             plotview.otab.setStyleSheet('color: white')
+            plotview.tab_widget.setStyleSheet('color: white')
         else:
             plotview.otab.setStyleSheet('color: black')
+            plotview.tab_widget.setStyleSheet('color: black')
 
 
 def rotate_point(point, angle=45.0, center=[0.0, 0.0], aspect=1.0):
