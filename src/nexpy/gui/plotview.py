@@ -935,17 +935,20 @@ class NXPlotView(QtWidgets.QDialog):
             self.xaxis = self.axis[self.ndim-1]
             self.yaxis = self.axis[self.ndim-2]
             if self.ndim > 2:
+                non_singleton_idx = [v for v, s in zip(idx, _signal.shape)
+                                     if s != 1]
                 for i in range(self.ndim-2):
                     self.axis[i].lo = self.axis[i].hi \
-                        = float(self.axis[i].centers[idx[i]])
+                        = float(self.axis[i].centers[non_singleton_idx[i]])
                 self.zaxis = self.axis[self.ndim - 3]
                 self.zaxis.lo = self.zaxis.hi = self.axis[self.ndim - 3].lo
             else:
                 self.zaxis = None
             self.vaxis = self.axis['signal']
             plotdata = NXdata(self.signal, [self.axes[i] for i in [-2, -1]])
-            if self.data.ndim == 2 or self.data.ndim == 3:
-                self._skew_angle = self.get_skew_angle(1, 2)
+            if self.data.ndim >= 2:
+                self._skew_angle = self.get_skew_angle(self.ndim - 2,
+                                                        self.ndim - 1)
                 if self._skew_angle is not None:
                     plotdata.nxangles = self._skew_angle
 
@@ -1364,7 +1367,7 @@ class NXPlotView(QtWidgets.QDialog):
             self.plotdata = self.data.project(axes, limits)
             if self.weighted:
                 self.plotdata = self.plotdata.weighted_data()
-            if self.ndim == 3 and not self._skew_angle:
+            if self.ndim >= 3 and not self._skew_angle:
                 self._skew_angle = self.get_skew_angle(*axes)
                 if self._skew_angle is not None:
                     self.plotdata.nxangles = self._skew_angle
@@ -1515,21 +1518,20 @@ class NXPlotView(QtWidgets.QDialog):
         if name == 'v' and self.image is not None:
             self.replot_image()
         else:
-            ax = self.ax
             if name == 'x':
                 if self.logx:
                     self.aspect = 'auto'
                     self.xtab.set_limits(*self.xaxis.log_limits())
-                    ax.set_xscale('log')
+                    self.ax.set_xscale('log')
                 else:
-                    ax.set_xscale('linear')
+                    self.ax.set_xscale('linear')
             elif name == 'y':
                 if self.logy:
                     self.aspect = 'auto'
                     self.ytab.set_limits(*self.yaxis.log_limits())
-                    ax.set_yscale('log')
+                    self.ax.set_yscale('log')
                 else:
-                    ax.set_yscale('linear')
+                    self.ax.set_yscale('linear')
             self.update_panels()
             self.draw()
 
@@ -1823,7 +1825,7 @@ class NXPlotView(QtWidgets.QDialog):
         """
         Return the skew angle defined by the NXdata attributes.
 
-        If the original data is two- or three-dimensional and the
+        If the original data is two- or three- or four-dimensional and the
         'angles' attribute has been defined, this returns the value
         between the x and y axes.
 
@@ -1836,11 +1838,19 @@ class NXPlotView(QtWidgets.QDialog):
         """
         if self.data.nxangles is not None:
             angles = self.data.nxangles
-            if self.data.ndim == 2:
+            if self.ndim == 2:
                 skew = angles
-            elif self.data.ndim > 2:
+            elif self.ndim == 3:
                 dim = [i for i in range(self.ndim) if i not in [xdim, ydim]][0]
                 skew = angles[dim]
+            elif self.ndim == 4:
+                if 0 in (xdim, ydim):  # v-axis is orthogonal; no skew
+                    return None
+                # Find the non-v spatial axis that is not being plotted
+                missing = [i for i in range(1, 4) if i not in (xdim, ydim)][0]
+                skew = angles[missing - 1]
+            else:
+                return None
             if not np.isclose(skew, 90.0):
                 return skew
         return None
