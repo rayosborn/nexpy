@@ -66,3 +66,6 @@ src/nexpy/_version.py
 
 # uv
 uv.lock
+
+# Claude
+.claude

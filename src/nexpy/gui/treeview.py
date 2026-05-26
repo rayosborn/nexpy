@@ -403,7 +403,9 @@ class NXTreeItem(QtGui.QStandardItem):
         elif role == QtCore.Qt.ForegroundRole:
             try:
                 node = self.node
-                if isinstance(node, (NXentry, NXsubentry)):
+                if 'deprecated' in node.attrs:
+                    return QtGui.QColor('#9CA3AF')
+                elif isinstance(node, (NXentry, NXsubentry)):
                     return QtGui.QColor('#3D85C6')
                 elif isinstance(node, NXdata):
                     return QtGui.QColor('#10B981')
@@ -413,9 +415,11 @@ class NXTreeItem(QtGui.QStandardItem):
             try:
                 tree = self.node.short_tree
                 if tree.count('\n') > 50:
-                    return '\n'.join(tree.split('\n')[0:50])+'\n...'
-                else:
-                    return tree
+                    tree = '\n'.join(tree.split('\n')[0:50]) + '\n...'
+                if 'deprecated' in self.node.attrs:
+                    tree = ('⚠ DEPRECATED — this group should no longer '
+                            'be used.\n\n' + tree)
+                return tree
             except Exception:
                 return ''
 
