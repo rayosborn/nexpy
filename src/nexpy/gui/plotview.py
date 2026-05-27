@@ -424,6 +424,8 @@ class NXPlotView(QtWidgets.QDialog):
         self._minorgrid = False
         self._majorlines = []
         self._minorlines = []
+        self._xlim_cid = self._ylim_cid = None
+        self._redrawing_skewed_grid = False
         self._minorticks = False
         self._active_mode = None
         self._cb_minorticks = False
@@ -2267,19 +2269,22 @@ class NXPlotView(QtWidgets.QDialog):
                 ax.minorticks_on()
             self.ax.set_axisbelow('line')
             if self.skew:
-                self.draw_skewed_grid(minor=minor, **opts)
+                self._connect_skewed_grid_callbacks()
+                self.ax.callbacks.process('xlim_changed', self.ax)
             else:
                 ax.grid(True, which='major', axis='both', **opts)
                 if minor:
                     opts['linewidth'] = max(self._gridwidth/2, 0.1)
                     ax.grid(True, which='minor', axis='both', **opts)
                 self.remove_skewed_grid()
+                self._disconnect_skewed_grid_callbacks()
         else:
             ax.grid(False, which='both', axis='both')
             if not self._minorticks:
                 self.minorticks_off()
             if self.skew:
                 self.remove_skewed_grid()
+            self._disconnect_skewed_grid_callbacks()
         if self._cb_minorticks:
             self.cb_minorticks_on()
         else:
@@ -2333,6 +2338,63 @@ class NXPlotView(QtWidgets.QDialog):
                 except Exception:
                     pass
         self._majorlines = self._minorlines = []
+
+    def _on_skewed_limits_changed(self, _ax):
+        """Redraw the skewed grid when axis limits change.
+
+        ``draw_skewed_grid`` adds lines via ``xlines``/``ylines``, both
+        of which force ``canvas.draw()``. That in turn runs
+        ``apply_aspect``, which can call ``set_xlim`` to enforce the
+        aspect ratio and re-emit ``xlim_changed``. The guard prevents
+        re-entry (which would strand lines that ``self._majorlines`` no
+        longer tracks), and the loop redraws until the limits stop
+        moving so the final grid matches the rendered axes.
+        """
+        if not (self._grid and self.skew):
+            return
+        if self._redrawing_skewed_grid:
+            return
+        opts = {'color': self._gridcolor,
+                'linestyle': self._gridstyle,
+                'linewidth': self._gridwidth,
+                'alpha': self._gridalpha}
+        self._redrawing_skewed_grid = True
+        try:
+            prev_limits = None
+            for _ in range(3):
+                self.draw_skewed_grid(minor=self._minorgrid, **opts)
+                limits = (self.ax.get_xlim(), self.ax.get_ylim())
+                if limits == prev_limits:
+                    break
+                prev_limits = limits
+        finally:
+            self._redrawing_skewed_grid = False
+
+    def _connect_skewed_grid_callbacks(self):
+        """Subscribe to xlim/ylim change events on the current axes.
+
+        Any prior subscription is disconnected first so the callback
+        always points at the live axes (which `plot_image` may
+        recreate).
+        """
+        self._disconnect_skewed_grid_callbacks()
+        if self.ax is None:
+            return
+        self._xlim_cid = self.ax.callbacks.connect(
+            'xlim_changed', self._on_skewed_limits_changed)
+        self._ylim_cid = self.ax.callbacks.connect(
+            'ylim_changed', self._on_skewed_limits_changed)
+
+    def _disconnect_skewed_grid_callbacks(self):
+        """Drop xlim/ylim subscriptions if any are active."""
+        for attr in ('_xlim_cid', '_ylim_cid'):
+            cid = getattr(self, attr, None)
+            if cid is not None and self.ax is not None:
+                try:
+                    self.ax.callbacks.disconnect(cid)
+                except Exception:
+                    pass
+            setattr(self, attr, None)
 
     def vlines(self, x, ymin=None, ymax=None, y=None, **opts):
         """
