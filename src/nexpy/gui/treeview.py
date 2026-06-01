@@ -89,17 +89,17 @@ class NXtree(NXgroup):
         """
         self.sync_shell_names()
         if self._model:
-            self.sync_children(self._item)
+            self.sync_children(self._model.invisibleRootItem(), self)
             for row in range(self._item.rowCount()):
                 for item in self._item.child(row).walk():
-                    self.sync_children(item)
+                    self.sync_children(item, item.node)
             index = self._item.index()
             if index.isValid():
                 self._view.dataChanged(index, index)
             self._view.update()
             self._view.status_message(self._view.node)
 
-    def sync_children(self, item):
+    def sync_children(self, item, node):
         """
         Synchronize the children of a tree item with its NeXus group.
 
@@ -110,23 +110,36 @@ class NXtree(NXgroup):
 
         Parameters
         ----------
-        item : NXTreeItem
-            The tree item to be synchronized.
+        item : QStandardItem
+            The tree item to be synchronized. For the top-level call
+            this is the model's invisible root item; otherwise it is
+            an NXTreeItem.
+        node : NXgroup
+            The NeXus group whose entries should mirror ``item``'s
+            children. Passed explicitly so the top-level call does not
+            depend on an attribute attached to the invisible root item,
+            whose PyQt wrapper is not guaranteed to persist.
         """
-        if isinstance(item.node, NXgroup):
+        if isinstance(node, NXgroup):
             children = []
             if item.hasChildren():
                 for row in range(item.rowCount()):
                     children.append(item.child(row))
             names = [child.name for child in children]
-            if item.node.entries_loaded:
-                for name in item.node:
+            if node.entries_loaded:
+                for name in node:
                     if name not in names:
-                        item.appendRow(NXTreeItem(item.node[name]))
-                for child in children:
-                    if child.name not in item.node:
-                        item.removeRow(child.row())
-        item.node.set_unchanged()
+                        item.appendRow(NXTreeItem(node[name]))
+                stale = [c for c in children if c.name not in node]
+                if stale and self._view is not None:
+                    self._view.selectionModel().clearSelection()
+                    self._view.setCurrentIndex(QtCore.QModelIndex())
+                for child in sorted(stale, key=lambda c: c.row(),
+                                    reverse=True):
+                    row = child.row()
+                    if row >= 0:
+                        item.removeRow(row)
+        node.set_unchanged()
 
     def add(self, node):
         """
@@ -475,7 +488,6 @@ class NXTreeView(QtWidgets.QTreeView):
         self.setFocusPolicy(QtCore.Qt.ClickFocus)
 
         self.tree._item = self._model.invisibleRootItem()
-        self.tree._item.node = self.tree
         self.tree._model = self._model
         self.tree._view = self
         self.tree._shell = self.mainwindow.user_ns
