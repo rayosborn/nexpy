@@ -4792,7 +4792,7 @@ class NXpolygon(NXpatch):
 
 class NXline:
 
-    def __init__(self, plotview=None, callback=None):
+    def __init__(self, plotview=None, callback=None, persist=False):
         """
         Initialize the NXline object.
 
@@ -4805,6 +4805,9 @@ class NXline:
             A callback function to be called when the line is drawn. The
             function should take two arguments, the x and y values of
             the line. If None, the default is to do nothing.
+        persist : bool, optional
+            If True, the line is not removed after release; the caller
+            is responsible for removing it. Default is False.
         """
         if plotview:
             self.plotview = plotview
@@ -4812,6 +4815,7 @@ class NXline:
             from .plotview import get_plotview
             self.plotview = get_plotview()
         self.callback = callback
+        self.persist = persist
         self.ax = self.plotview.ax
         self.canvas = self.plotview.canvas
         self.line = None
@@ -4866,5 +4870,6 @@ class NXline:
         if self.callback:
             self.callback(self.start_point, self.end_point)
         self.disconnect()
-        self.line.remove()
+        if not self.persist:
+            self.line.remove()
         self.canvas.draw()
