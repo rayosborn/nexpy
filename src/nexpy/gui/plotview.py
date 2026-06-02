@@ -311,6 +311,8 @@ class NXPlotView(QtWidgets.QDialog):
         y-axis, and 2 for the x-axis.
     """
 
+    view_closed = QtCore.Signal(str)
+
     def __init__(self, label=None, mainwindow=None, parent=None):
 
         """
@@ -404,6 +406,7 @@ class NXPlotView(QtWidgets.QDialog):
         self.ymin = self.ymax = None
         self.vmin = self.vmax = None
         self.plots = {}
+        self.cut_lines = {}
 
         self.image = None
         self.colorbar = None
@@ -3080,10 +3083,22 @@ class NXPlotView(QtWidgets.QDialog):
 
     def close_view(self):
         """Remove this window from menus and close associated panels."""
+        self.view_closed.emit(self.label)
         self.remove_menu_action()
         if self.label in plotviews:
             del plotviews[self.label]
         self.remove_panels()
+
+    def on_cut_view_closed(self, label):
+        """Remove persistent cut lines when their cut window is closed."""
+        if label in self.cut_lines:
+            for line in self.cut_lines[label]:
+                try:
+                    line.remove()
+                except Exception:
+                    pass
+            del self.cut_lines[label]
+            self.canvas.draw()
 
     def closeEvent(self, event):
         """Close this widget and mark it for deletion."""
@@ -4353,7 +4368,8 @@ class NXProjectionTab(QtWidgets.QWidget):
         event : QMouseEvent
             The mouse event that triggered the drawing of the line.
         """
-        self.rotate_line = NXline(self.plotview, self.plot_rotated_line)
+        self.rotate_line = NXline(self.plotview, self.plot_rotated_line,
+                                  persist=True)
         self.rotate_line.on_press(event)
 
     def plot_rotated_line(self, start, end):
@@ -4428,6 +4444,15 @@ class NXProjectionTab(QtWidgets.QWidget):
         legend_label = f"{rotation_angle:.0f}° y = {rotated_y:.2f}"
         plotviews[label].plots[idx]['legend_label'] = legend_label
         plotviews[label].legend()
+        color = plotviews[label].plots[idx]['color']
+        line = self.rotate_line.line
+        line.set_color(color)
+        line.set_linestyle('--')
+        line.set_linewidth(2)
+        if label not in self.plotview.cut_lines:
+            self.plotview.cut_lines[label] = []
+            plotviews[label].view_closed.connect(self.plotview.on_cut_view_closed)
+        self.plotview.cut_lines[label].append(line)
 
 
 class NXNavigationToolbar(NavigationToolbar2QT):
