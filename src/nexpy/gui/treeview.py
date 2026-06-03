@@ -404,19 +404,12 @@ class NXTreeItem(QtGui.QStandardItem):
             return f'{prefix} {self.name}' if prefix else self.name
         elif role == QtCore.Qt.EditRole:
             return self.name
-        elif role == QtCore.Qt.FontRole:
-            try:
-                if (isinstance(self.node, (NXroot, NXentry))
-                    and not isinstance(self.node, NXsubentry)):
-                    font = QtGui.QFont()
-                    font.setBold(True)
-                    return font
-            except Exception:
-                pass
         elif role == QtCore.Qt.ForegroundRole:
             try:
                 node = self.node
-                if 'deprecated' in node.attrs:
+                if isinstance(node, NXroot) and node._file_modified:
+                    return QtGui.QColor("#E03D10")
+                elif 'deprecated' in node.attrs:
                     return QtGui.QColor('#9CA3AF')
                 elif isinstance(node, (NXentry, NXsubentry)):
                     return QtGui.QColor('#3D85C6')
