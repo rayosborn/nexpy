@@ -2188,7 +2188,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         If an exception is raised, it is ignored.
         """
-        windows = self.dialogs
+        windows = list(self.dialogs)
         windows += [self.plotviews[pv]
                     for pv in self.plotviews if pv != 'Main']
         for window in windows:
