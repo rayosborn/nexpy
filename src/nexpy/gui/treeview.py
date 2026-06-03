@@ -12,8 +12,22 @@ from nexusformat.nexus import (NeXusError, NXdata, NXentry, NXfield, NXgroup,
                                NXlink, NXroot, NXsubentry, nxload)
 
 from .pyqt import QtCore, QtGui, QtWidgets
-from .utils import (display_message, get_name, modification_time, report_error)
+from .utils import (display_message, get_name, modification_time, report_error,
+                    resource_icon)
 from .widgets import NXSortModel
+
+
+_tree_icons = {}
+
+
+def _tree_icon(name):
+    """Return a cached QIcon for a tree-view decoration.
+
+    Populated lazily so a QApplication exists before any QIcon is built.
+    """
+    if name not in _tree_icons:
+        _tree_icons[name] = resource_icon(f'tree-{name}.svg')
+    return _tree_icons[name]
 
 
 class NXtree(NXgroup):
@@ -380,30 +394,26 @@ class NXTreeItem(QtGui.QStandardItem):
 
         Returns
         -------
-        str or None
-            The name of the tree item (with emoji prefix for root and link
-            nodes) for DisplayRole, the plain name for EditRole, and a
-            tooltip string for ToolTipRole.
+        str, QIcon, QColor, or None
+            The item name for DisplayRole and EditRole, an icon flagging
+            read-only / modified / link state for DecorationRole, a
+            foreground color for ForegroundRole, or a tooltip string for
+            ToolTipRole.
         """
-        if role == QtCore.Qt.DisplayRole:
+        if role == QtCore.Qt.DisplayRole or role == QtCore.Qt.EditRole:
+            return self.name
+        elif role == QtCore.Qt.DecorationRole:
             try:
                 node = self.node
                 if isinstance(node, NXroot):
                     if node._file_modified:
-                        prefix = '🚫'
+                        return _tree_icon('modified')
                     elif node.nxfilemode == 'r':
-                        prefix = '🔒'
-                    else:
-                        prefix = None
+                        return _tree_icon('lock')
                 elif isinstance(node, NXlink):
-                    prefix = '🔗'
-                else:
-                    prefix = None
+                    return _tree_icon('link')
             except Exception:
-                prefix = None
-            return f'{prefix} {self.name}' if prefix else self.name
-        elif role == QtCore.Qt.EditRole:
-            return self.name
+                pass
         elif role == QtCore.Qt.ForegroundRole:
             try:
                 node = self.node
