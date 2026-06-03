@@ -1060,12 +1060,23 @@ def define_mode():
         mainwindow.statusBar().setPalette(mainwindow.app.app.palette())
         mainwindow.treeview.setStyleSheet('')
 
+    stale = []
     for dialog in mainwindow.dialogs:
-        if dialog.windowTitle() == 'Script Editor':
+        try:
+            title = dialog.windowTitle()
+        except RuntimeError:
+            stale.append(dialog)
+            continue
+        if title == 'Script Editor':
             for tab in [dialog.tabs[t] for t in dialog.tabs]:
                 tab.define_style()
-        elif dialog.windowTitle().startswith('Log File'):
+        elif title.startswith('Log File'):
             dialog.switch_mode()
+    for dialog in stale:
+        try:
+            mainwindow.dialogs.remove(dialog)
+        except ValueError:
+            pass
 
     for plotview in mainwindow.plotviews.values():
         if in_dark_mode():
