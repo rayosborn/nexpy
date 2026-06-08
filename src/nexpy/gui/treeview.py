@@ -105,8 +105,19 @@ class NXtree(NXgroup):
         if self._model:
             self.sync_children(self._model.invisibleRootItem(), self)
             for row in range(self._item.rowCount()):
-                for item in self._item.child(row).walk():
-                    self.sync_children(item, item.node)
+                for item in list(self._item.child(row).walk()):
+                    try:
+                        node = item.node
+                        if node is None:
+                            parent = (item.parent()
+                                      or self._model.invisibleRootItem())
+                            item_row = item.row()
+                            if item_row >= 0:
+                                parent.removeRow(item_row)
+                            continue
+                        self.sync_children(item, node)
+                    except RuntimeError:
+                        continue
             index = self._item.index()
             if index.isValid():
                 self._view.dataChanged(index, index)
@@ -374,7 +385,10 @@ class NXTreeItem(QtGui.QStandardItem):
     @property
     def node(self):
         """The selected node in the tree."""
-        return self.tree[self.path]
+        try:
+            return self.tree[self.path]
+        except NeXusError:
+            return None
 
     def __repr__(self):
         return f"NXTreeItem('{self.path}')"
