@@ -754,11 +754,16 @@ class NXWidgetMixin:
         """The selected root entry."""
         return self.tree[self.root_box.currentText()]
 
-    def select_entry(self, slot=None, text='Select Entry',
-                     subentry=False, subentries_callback=None):
+    def select_entry(self, slot=None, text='Select Entry'):
         """
         Create a dropdown box from a list of the root entries and a list
         of the entries within the selected root entry in the NeXus tree.
+
+        The entry selector shows a flat list of all top-level entries and
+        any NXsubentry groups they contain, e.g. 'f1', 'f1/s1', 'f2'.
+        Subclasses may override `switch_root` to add further entries (e.g.
+        subentries defined in a parent file) or to hide entries that are
+        not applicable.
 
         Parameters
         ----------
@@ -768,16 +773,6 @@ class NXWidgetMixin:
         text : str, optional
             The text to be displayed on the button to change the entry.
             Default is 'Select Entry'.
-        subentry : bool, optional
-            If True, add a subentry selector that shows and hides
-            dynamically based on whether the selected entry contains
-            NXsubentry groups. Default is False.
-        subentries_callback : callable, optional
-            Called with no arguments; should return a list of extra
-            subentry names to include alongside any NXsubentry groups
-            found in the selected entry (e.g. parent-defined subentries
-            not yet created in the file). Only used when subentry=True.
-            Default is None.
 
         Returns
         -------
@@ -794,29 +789,24 @@ class NXWidgetMixin:
             self.root_box.select(self.treeview.node.nxroot.nxname)
         except Exception:
             pass
-        self.entry_box = NXComboBox(
-            items=sorted(self.tree[self.root_box.selected].entries,
-                         key=natural_sort))
+        self.data_box = None
+        self._include_subentries = True
+        self.entry_box = NXComboBox()
+        self.switch_root()
         try:
-            if not isinstance(self.treeview.node, NXroot):
-                self.entry_box.select(self.treeview.node.nxentry.nxname)
+            node = self.treeview.node
+            if not isinstance(node, NXroot):
+                entry_name = node.nxentry.nxname
+                from nexusformat.nexus import NXsubentry
+                if isinstance(node, NXsubentry):
+                    self.entry_box.select(f"{entry_name}/{node.nxname}")
+                else:
+                    self.entry_box.select(entry_name)
         except Exception:
             pass
-        self.data_box = None
-        self.subentry_box = None
         layout.addStretch()
         layout.addWidget(self.root_box)
         layout.addWidget(self.entry_box)
-        if subentry:
-            self._subentries_callback = subentries_callback
-            self._subentry_label = NXLabel('Subentry:')
-            self._subentry_label.setVisible(False)
-            self.subentry_box = NXComboBox()
-            self.subentry_box.setVisible(False)
-            layout.addWidget(self._subentry_label)
-            layout.addWidget(self.subentry_box)
-            self.entry_box.activated.connect(self._update_subentry_box)
-            self._update_subentry_box()
         if slot:
             layout.addWidget(NXPushButton(text, slot))
         layout.addStretch()
@@ -830,52 +820,40 @@ class NXWidgetMixin:
         Updates the available entries in the select_entry widget and,
         if the select_data widget is being used, updates the available
         data in the select_data widget.
+
+        When `_include_subentries` is True (set by `select_entry`), the
+        entry list includes NXsubentry children of each top-level entry as
+        flat paths, e.g. 'f1/s1'. Subclasses may override this method to
+        add or remove further entries after calling super().
         """
         self.entry_box.clear()
-        self.entry_box.add(*sorted(self.tree[self.root_box.selected].entries))
+        root = self.tree[self.root_box.selected]
+        if getattr(self, '_include_subentries', False):
+            for name in sorted(root.entries, key=natural_sort):
+                self.entry_box.add(name)
+                try:
+                    for sub in root[name].NXsubentry:
+                        self.entry_box.add(f"{name}/{sub.nxname}")
+                except Exception:
+                    pass
+        else:
+            self.entry_box.add(*sorted(root.entries, key=natural_sort))
         if self.data_box:
             self.switch_entry()
-        if self.subentry_box is not None:
-            self._update_subentry_box()
-
-    def _update_subentry_box(self):
-        """Populate subentry_box from the current entry's NXsubentry groups.
-
-        Shows the label and box when subentries are available; hides
-        them when the selected entry has no subentries.
-        """
-        try:
-            subentries = [s.nxname for s in self.entry.NXsubentry]
-        except Exception:
-            subentries = []
-        if self._subentries_callback:
-            try:
-                for name in self._subentries_callback():
-                    if name not in subentries:
-                        subentries.append(name)
-            except Exception:
-                pass
-        self.subentry_box.blockSignals(True)
-        self.subentry_box.clear()
-        if subentries:
-            self.subentry_box.addItems([''] + subentries)
-            self._subentry_label.setVisible(True)
-            self.subentry_box.setVisible(True)
-        else:
-            self._subentry_label.setVisible(False)
-            self.subentry_box.setVisible(False)
-        self.subentry_box.blockSignals(False)
 
     @property
     def entry(self):
-        """The selected entry."""
-        return self.tree[f"{self.root_box.selected}/{self.entry_box.selected}"]
+        """The selected top-level entry."""
+        selected = self.entry_box.selected
+        entry_name = selected.split('/', 1)[0]
+        return self.tree[f"{self.root_box.selected}/{entry_name}"]
 
     @property
     def subentry(self):
-        """The selected subentry name, or '' for the top-level entry."""
-        if self.subentry_box is not None and self.subentry_box.isVisible():
-            return self.subentry_box.selected
+        """The selected subentry name, or '' if only a top-level entry."""
+        selected = self.entry_box.selected
+        if '/' in selected:
+            return selected.split('/', 1)[1]
         return ''
 
     def select_data(self, slot=None, text='Select Data'):
