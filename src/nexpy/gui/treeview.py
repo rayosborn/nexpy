@@ -154,7 +154,12 @@ class NXtree(NXgroup):
             if node.entries_loaded:
                 for name in node:
                     if name not in names:
-                        item.appendRow(NXTreeItem(node[name]))
+                        child_node = node[name]
+                        child_item = NXTreeItem(child_node)
+                        item.appendRow(child_item)
+                        if (isinstance(child_node, NXgroup) and
+                                child_node.entries_loaded):
+                            self.sync_children(child_item, child_node)
                 stale = [c for c in children if c.name not in node]
                 if stale and self._view is not None:
                     self._view.selectionModel().clearSelection()
